@@ -9,6 +9,11 @@
       name = "pi-subagents";
       package = final.pi-subagents;
     };
+
+    plannotator-pi-extension = {
+      name = "plannotator-pi-extension";
+      package = final.plannotator-pi-extension;
+    };
   };
 
   rpiv-todo = prev.buildNpmPackage rec {
@@ -42,6 +47,41 @@
       description = "Pi todo extension package";
       homepage = "https://pi.dev/packages/@juicesharp/rpiv-todo";
       license = prev.lib.licenses.mit;
+      platforms = prev.lib.platforms.unix;
+    };
+  };
+
+  plannotator-pi-extension = prev.buildNpmPackage rec {
+    pname = "plannotator-pi-extension";
+    version = "0.19.27";
+
+    src = prev.fetchurl {
+      url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
+      hash = "sha512-ZkXhoH+d7UHNO4APF16mFzoxTsd3o+/Sv0AaKiB22icaOsQ+5HawpnZy3m/6AdiKvvl/x/kyUvz4vfNaFlPbiQ==";
+    };
+
+    sourceRoot = "package";
+    npmDepsHash = "sha256-9L43ZO69O9PmPvOPCCCk2PljPWwtPAUJ66GCUi2VdFk=";
+    dontNpmBuild = true;
+    npmFlags = ["--legacy-peer-deps" "--omit=dev"];
+    npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
+    npm_config_legacy_peer_deps = "true";
+
+    postPatch = ''
+      cp ${../../pkgs/pi-extension/package-lock.json} package-lock.json
+    '';
+
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out
+      cp -r . $out/
+      runHook postInstall
+    '';
+
+    meta = {
+      description = "Plannotator Pi extension for interactive plan and code review annotations";
+      homepage = "https://github.com/backnotprop/plannotator";
+      license = with prev.lib.licenses; [mit asl20];
       platforms = prev.lib.platforms.unix;
     };
   };
