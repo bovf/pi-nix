@@ -4,11 +4,11 @@
 final: prev: {
   pi-vim = prev.stdenvNoCC.mkDerivation {
     pname = "pi-vim";
-    version = "0.11.0";
+    version = "0.11.1";
 
     src = prev.fetchurl {
-      url = "https://registry.npmjs.org/pi-vim/-/pi-vim-0.11.0.tgz";
-      hash = "sha256-/wgW4tBtEAEvIZ0O8PPlIpXg2Vhm0JJYzz0+iFRdIjk=";
+      url = "https://registry.npmjs.org/pi-vim/-/pi-vim-0.11.1.tgz";
+      hash = "sha512-5qXJIwGRnjZ2JwhPjPKj1JzBr+RLl3i2FnZzd7vY6VHl6ck4KA2hOqRcxxVBlX0QngsUnXXAo8D/0HULoy6FUw==";
     };
 
     sourceRoot = "package";
