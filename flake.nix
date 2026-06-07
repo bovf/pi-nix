@@ -21,6 +21,9 @@
 
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
 
+    appsLib = import ./nix/apps {inherit nixpkgs;};
+    shellsLib = import ./nix/shells;
+
     piVimOverlay = import ./overlays/pi-vim {};
     piSearchOverlay = import ./overlays/pi-search {};
     piPackagesOverlay = import ./overlays/pi-packages {};
@@ -52,5 +55,16 @@
       inherit (pkgs) pi-vim pi-search pi-search-mcp rpiv-todo pi-subagents pi-coding-agent;
       default = pkgs.pi-coding-agent;
     });
+
+    apps = forAllSystems (system: appsLib.mkApps system);
+
+    devShells = forAllSystems (system: let
+      pkgs = nixpkgs.legacyPackages.${system};
+      apps = appsLib.mkApps system;
+    in
+      shellsLib {
+        inherit pkgs;
+        fmtApp = apps.fmt;
+      });
   };
 }
