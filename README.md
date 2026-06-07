@@ -3,13 +3,13 @@
 Nix flake for `pi-coding-agent` and maintained Pi extensions/packages.
 
 This repo is package/build logic only. Home Manager policy lives in
-[`badwater-ai`](git@gitlab.dobryops.com:bovf/badwater-ai.git); host choices live
+[`badwater-ai`](git@gitlab.dobryops.com:nix/badwater-ai.git); host choices live
 in `pl-badwater`.
 
 ## Remote
 
 ```text
-git@gitlab.dobryops.com:bovf/pi-nix.git
+git@gitlab.dobryops.com:nix/pi-nix.git
 ```
 
 ## Outputs
@@ -56,7 +56,7 @@ Each entry is shaped like:
 
 ```nix
 inputs.pi-nix = {
-  url = "git+ssh://git@gitlab.dobryops.com/bovf/pi-nix.git";
+  url = "git+ssh://git@gitlab.dobryops.com/nix/pi-nix.git";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
