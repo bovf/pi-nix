@@ -18,15 +18,15 @@
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";
-    version = "1.18.2";
+    version = "1.20.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@juicesharp/rpiv-todo/-/rpiv-todo-${version}.tgz";
-      hash = "sha512-YQ7jex+AcS7nh3b6cIhYZhBpXx0Z91x/93TQSMFj4Tpxrob5I8zHST72FuWCmL6QCVMHZ2rGB8tGBTF7drIIPw==";
+      hash = "sha512-+tRVFrR/WVc/78UQm0+w+goAIKNyO28Lzrfr9agnOfccIkk98M0T/hnGY8z1PjYkNDnDk+BETiOYhhLqJvuNcQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-d7js6rHYe5Eh4i5cXuk6O3qat3cEVAvWww7Xb4pgwqc=";
+    npmDepsHash = "sha256-nQDJ7UAxSIbPV0uuAzKiDh/0AiAysUF03PNyQjxMfcA=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
@@ -53,15 +53,15 @@
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.19.27";
+    version = "0.20.2";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-ZkXhoH+d7UHNO4APF16mFzoxTsd3o+/Sv0AaKiB22icaOsQ+5HawpnZy3m/6AdiKvvl/x/kyUvz4vfNaFlPbiQ==";
+      hash = "sha512-TBCcWLSPI0fdZhGunbemmEnZ7tjEqshWHIj0zaYRDoesDk57nVsQ07Wx5Q2CxtDxVrXB4ld+jyzt86UY98WO8w==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-9L43ZO69O9PmPvOPCCCk2PljPWwtPAUJ66GCUi2VdFk=";
+    npmDepsHash = "sha256-CEyOMq0QgBaYVgh9AIWPtdiUqQOZAyqDsDBiz9fyCDQ=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -96,7 +96,7 @@
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-YTzN3feIMqj/8hmyEPGzI94LZcrELIEUCL1vyY0dXjQ=";
+    npmDepsHash = "sha256-uMhB77yzDw7bn+j7QQYv57TT4IyfZltD9oTEBOSz+Fg=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
