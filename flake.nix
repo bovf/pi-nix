@@ -3,13 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixpkgs-pi.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
   outputs = {
     self,
     nixpkgs,
-    nixpkgs-pi,
     ...
   }: let
     systems = [
@@ -27,9 +25,7 @@
     piVimOverlay = import ./overlays/pi-vim {};
     piSearchOverlay = import ./overlays/pi-search {};
     piPackagesOverlay = import ./overlays/pi-packages {};
-    piCodingAgentOverlay = final: prev: {
-      pi-coding-agent = nixpkgs-pi.legacyPackages.${prev.stdenv.hostPlatform.system}.pi-coding-agent;
-    };
+    piCodingAgentOverlay = import ./overlays/pi-coding-agent {};
 
     defaultOverlay = final: prev:
       (piVimOverlay final prev)
