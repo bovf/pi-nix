@@ -14,6 +14,37 @@
       name = "plannotator-pi-extension";
       package = final.plannotator-pi-extension;
     };
+
+    ponytail = {
+      name = "ponytail";
+      package = final.ponytail;
+    };
+  };
+
+  ponytail = prev.stdenvNoCC.mkDerivation {
+    pname = "ponytail";
+    version = "4.7.0";
+
+    src = prev.fetchFromGitHub {
+      owner = "DietrichGebert";
+      repo = "ponytail";
+      tag = "v4.7.0";
+      hash = "sha256-Q6vlkbTfBFrNFTxEwYeMe5ciOe6QdULegvExwT//gJs=";
+    };
+
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out
+      cp -r . $out/
+      runHook postInstall
+    '';
+
+    meta = {
+      description = "Lazy senior dev mode for AI agents";
+      homepage = "https://github.com/DietrichGebert/ponytail";
+      license = prev.lib.licenses.mit;
+      platforms = prev.lib.platforms.unix;
+    };
   };
 
   rpiv-todo = prev.buildNpmPackage rec {

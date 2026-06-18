@@ -113,7 +113,7 @@
         update_pi_package "pi-subagents" "pi-subagents" "pkgs/pi-subagents"
         update_pi_package "plannotator-pi-extension" "@plannotator/pi-extension" "pkgs/pi-extension"
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-subagents .#plannotator-pi-extension --no-link
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-subagents .#plannotator-pi-extension .#ponytail --no-link
         nix run .#fmt
       '';
     };

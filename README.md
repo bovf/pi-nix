@@ -28,10 +28,12 @@ packages.${system}.pi-search-mcp
 packages.${system}.rpiv-todo
 packages.${system}.pi-subagents
 packages.${system}.plannotator-pi-extension
+packages.${system}.ponytail
 ```
 
-`pi-coding-agent` currently follows `nixpkgs-pi`; package extensions are built
-Nix-natively from npm tarballs/lockfiles.
+`pi-coding-agent` is packaged directly from `earendil-works/pi`; package
+extensions are built Nix-natively from npm tarballs, lockfiles, or pinned GitHub
+sources.
 
 ## Pi package registry
 
@@ -41,6 +43,7 @@ The overlay exposes a registry for declarative Home Manager config:
 pkgs.piPackages.rpiv-todo
 pkgs.piPackages.pi-subagents
 pkgs.piPackages.plannotator-pi-extension
+pkgs.piPackages.ponytail
 ```
 
 Each entry is shaped like:
@@ -71,6 +74,7 @@ badwater.ai.pi.packages = with pkgs.piPackages; [
   rpiv-todo
   pi-subagents
   plannotator-pi-extension
+  ponytail
 ];
 ```
 
@@ -92,7 +96,9 @@ pi-subagents
 plannotator-pi-extension
 ```
 
-and validates:
+`ponytail` is pinned from GitHub and included in update validation.
+
+Validated outputs:
 
 ```text
 pi-coding-agent
@@ -102,4 +108,5 @@ pi-search-mcp
 rpiv-todo
 pi-subagents
 plannotator-pi-extension
+ponytail
 ```
