@@ -1,16 +1,16 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.79.4";
+    version = "0.80.2";
 
     src = prev.fetchFromGitHub {
       owner = "earendil-works";
       repo = "pi";
       tag = "v${finalAttrs.version}";
-      hash = "sha256-cAlQfKtT8kLoAHYvXusbpM2I9FrRijWzSPQDSy/Kkro=";
+      hash = "sha256-aKtgPc3rwHEp856jP3N7nImph0CSG+gsWq9OVci3hmE=";
     };
 
-    npmDepsHash = "sha256-y3wwz0orFrUPu4XRJnHRkO9x9s+GMtBP/2g7kN336vQ=";
+    npmDepsHash = "sha256-1EGs8lX8XoAnRtS+pw4lBRm24U/vtVB2loVRmZyd4Z8=";
     npmWorkspace = "packages/coding-agent";
 
     # Skip native module rebuild for unneeded workspaces (e.g. canvas from web-ui).
