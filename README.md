@@ -26,6 +26,7 @@ packages.${system}.pi-vim
 packages.${system}.pi-search
 packages.${system}.pi-search-mcp
 packages.${system}.rpiv-todo
+packages.${system}.pi-archimedes-todo
 packages.${system}.pi-subagents
 packages.${system}.plannotator-pi-extension
 packages.${system}.ponytail
@@ -41,6 +42,7 @@ The overlay exposes a registry for declarative Home Manager config:
 
 ```nix
 pkgs.piPackages.rpiv-todo
+pkgs.piPackages.pi-archimedes-todo
 pkgs.piPackages.pi-subagents
 pkgs.piPackages.plannotator-pi-extension
 pkgs.piPackages.ponytail
@@ -71,7 +73,7 @@ Then in a `badwater-ai` consumer:
 
 ```nix
 badwater.ai.pi.packages = with pkgs.piPackages; [
-  rpiv-todo
+  pi-archimedes-todo
   pi-subagents
   plannotator-pi-extension
   ponytail
@@ -92,6 +94,7 @@ nix develop             # installs staged-file Alejandra pre-commit hook
 ```text
 pi-vim
 rpiv-todo
+pi-archimedes-todo
 pi-subagents
 plannotator-pi-extension
 ```
@@ -106,6 +109,7 @@ pi-vim
 pi-search
 pi-search-mcp
 rpiv-todo
+pi-archimedes-todo
 pi-subagents
 plannotator-pi-extension
 ponytail
