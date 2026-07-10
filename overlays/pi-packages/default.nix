@@ -33,13 +33,13 @@
 
   ponytail = prev.stdenvNoCC.mkDerivation {
     pname = "ponytail";
-    version = "4.7.0";
+    version = "4.8.4";
 
     src = prev.fetchFromGitHub {
       owner = "DietrichGebert";
       repo = "ponytail";
-      tag = "v4.7.0";
-      hash = "sha256-Q6vlkbTfBFrNFTxEwYeMe5ciOe6QdULegvExwT//gJs=";
+      tag = "v4.8.4";
+      hash = "sha256-1A9GkjCuiqwd6Wxl18CZUGYekxrbeTLVDapNUua8ihg=";
     };
 
     installPhase = ''
@@ -129,15 +129,15 @@
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.20.2";
+    version = "0.22.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-TBCcWLSPI0fdZhGunbemmEnZ7tjEqshWHIj0zaYRDoesDk57nVsQ07Wx5Q2CxtDxVrXB4ld+jyzt86UY98WO8w==";
+      hash = "sha512-EdTTfw5jk8ENz8MILD58/muGlgmFQgiqmD8B7l7KZb32atyB/k36Af+33XKtB/glV2LblfFNImXQF82jo8u1ZA==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-CEyOMq0QgBaYVgh9AIWPtdiUqQOZAyqDsDBiz9fyCDQ=";
+    npmDepsHash = "sha256-WqXnYLpkuDHqXqO8K5CplFJHHntwgIA/TXrFbKReD44=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
