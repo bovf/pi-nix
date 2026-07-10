@@ -110,11 +110,11 @@
 
         update_simple_npm "pi-vim" "pi-vim" "overlays/pi-vim/default.nix"
         update_pi_package "rpiv-todo" "@juicesharp/rpiv-todo" "pkgs/rpiv-todo"
-        update_pi_package "pi-archimedes-todo" "@pi-archimedes/todo" "pkgs/pi-archimedes-todo"
+        update_pi_package "pi-archimedes" "pi-archimedes" "pkgs/pi-archimedes"
         update_pi_package "pi-subagents" "pi-subagents" "pkgs/pi-subagents"
         update_pi_package "plannotator-pi-extension" "@plannotator/pi-extension" "pkgs/pi-extension"
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-archimedes-todo .#pi-subagents .#plannotator-pi-extension .#ponytail --no-link
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-archimedes .#pi-subagents .#plannotator-pi-extension .#ponytail --no-link
         nix run .#fmt
       '';
     };

@@ -5,9 +5,9 @@
       package = final.rpiv-todo;
     };
 
-    pi-archimedes-todo = {
-      name = "pi-archimedes-todo";
-      package = final.pi-archimedes-todo;
+    pi-archimedes = {
+      name = "pi-archimedes";
+      package = final.pi-archimedes;
     };
 
     pi-subagents = {
@@ -52,24 +52,24 @@
     };
   };
 
-  pi-archimedes-todo = prev.buildNpmPackage rec {
-    pname = "pi-archimedes-todo";
+  pi-archimedes = prev.buildNpmPackage rec {
+    pname = "pi-archimedes";
     version = "1.7.1";
 
     src = prev.fetchurl {
-      url = "https://registry.npmjs.org/@pi-archimedes/todo/-/todo-${version}.tgz";
-      hash = "sha512-XfzwKtyI8Tlki91x+AyuI05tguefm2FXbf7TZt3WnqX4TS3n9IiHU3ia2g5CqqIRhydZzLxR+co46HXLquf/uA==";
+      url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
+      hash = "sha512-DXctozJ7dRbuRTNROWtcysolphRzwZ3H8K8hqvyFyNH9NvHTf3iHwvxbOw7m9+h2hoNMuzUrg7dZz+VkhZMIDQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-caTHSDxVhVs/mB/qkh07gIsvMDGFhvoLG4YMtbjRaaw=";
+    npmDepsHash = "sha256-2p0mzNm6bYdR4QRBn/WKLOF6mLrI0eItjXKmU8w4R2U=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
     npm_config_legacy_peer_deps = "true";
 
     postPatch = ''
-      cp ${../../pkgs/pi-archimedes-todo/package-lock.json} package-lock.json
+      cp ${../../pkgs/pi-archimedes/package-lock.json} package-lock.json
     '';
 
     installPhase = ''
@@ -80,7 +80,7 @@
     '';
 
     meta = {
-      description = "Todo list management for the Pi coding agent";
+      description = "Integrated extension suite for the Pi coding agent";
       homepage = "https://github.com/danielcherubini/pi-archimedes";
       license = prev.lib.licenses.mit;
       platforms = prev.lib.platforms.unix;
