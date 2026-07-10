@@ -30,6 +30,11 @@ packages.${system}.pi-archimedes
 packages.${system}.pi-subagents
 packages.${system}.plannotator-pi-extension
 packages.${system}.ponytail
+packages.${system}.pi-wait-what
+packages.${system}.pi-lsp
+packages.${system}.pi-chrome-devtools
+packages.${system}.pi-btw
+packages.${system}.pi-goal
 ```
 
 `pi-coding-agent` is packaged directly from `earendil-works/pi`; package
@@ -47,6 +52,11 @@ pkgs.piPackages.pi-archimedes
 pkgs.piPackages.pi-subagents
 pkgs.piPackages.plannotator-pi-extension
 pkgs.piPackages.ponytail
+pkgs.piPackages.pi-wait-what
+pkgs.piPackages.pi-lsp
+pkgs.piPackages.pi-chrome-devtools
+pkgs.piPackages.pi-btw
+pkgs.piPackages.pi-goal
 ```
 
 `hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill.
@@ -81,6 +91,11 @@ badwater.ai.pi.packages = with pkgs.piPackages; [
   pi-subagents
   plannotator-pi-extension
   ponytail
+  pi-wait-what
+  pi-lsp
+  pi-chrome-devtools
+  pi-btw
+  pi-goal
 ];
 ```
 
@@ -101,6 +116,11 @@ rpiv-todo
 pi-archimedes
 pi-subagents
 plannotator-pi-extension
+pi-wait-what
+pi-lsp
+pi-chrome-devtools
+pi-btw
+pi-goal
 ```
 
 `ponytail` is pinned from GitHub and included in update validation.
@@ -117,4 +137,9 @@ pi-archimedes
 pi-subagents
 plannotator-pi-extension
 ponytail
+pi-wait-what
+pi-lsp
+pi-chrome-devtools
+pi-btw
+pi-goal
 ```

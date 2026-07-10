@@ -54,7 +54,7 @@
         config.allowUnfree = true;
       };
     in {
-      inherit (pkgs) pi-vim pi-search pi-search-mcp rpiv-todo pi-archimedes pi-subagents plannotator-pi-extension ponytail pi-coding-agent;
+      inherit (pkgs) pi-vim pi-search pi-search-mcp rpiv-todo pi-archimedes pi-subagents plannotator-pi-extension ponytail pi-wait-what pi-lsp pi-chrome-devtools pi-btw pi-goal pi-coding-agent;
       default = pkgs.pi-coding-agent;
     });
 

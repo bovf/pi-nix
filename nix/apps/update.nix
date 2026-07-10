@@ -39,7 +39,7 @@
         }
 
         update_pi_package() {
-          local attr="$1" npm_name="$2" lock_dir="$3"
+          local attr="$1" npm_name="$2" lock_dir="$3" minimal_lock="''${4:-false}"
           local encoded meta latest integrity tarball tmp got out code
           encoded="$npm_name"
           if [[ "$npm_name" == @*/* ]]; then
@@ -52,6 +52,10 @@
 
           tmp=$(mktemp -d)
           curl -fsSL "$tarball" | tar -xz -C "$tmp"
+          if [ "$minimal_lock" = true ]; then
+            jq 'del(.devDependencies, .peerDependencies)' "$tmp/package/package.json" > "$tmp/package/package.json.nix"
+            mv "$tmp/package/package.json.nix" "$tmp/package/package.json"
+          fi
           (cd "$tmp/package" && npm install --package-lock-only --ignore-scripts --omit=dev --legacy-peer-deps >/dev/null)
           cp "$tmp/package/package-lock.json" "$lock_dir/package-lock.json"
           rm -rf "$tmp"
@@ -64,7 +68,7 @@
         attr, version, integrity = sys.argv[1:4]
         path = Path("overlays/pi-packages/default.nix")
         text = path.read_text()
-        pattern = rf'(^  {re.escape(attr)} = prev.buildNpmPackage.*?version = ")[^"]+(";.*?hash = ")[^"]+(";.*?npmDepsHash = )[^;]+(;)'
+        pattern = rf'(^  {re.escape(attr)} = .*?version = ")[^"]+(";.*?hash = ")[^"]+(";.*?npmDepsHash = )[^;]+(;)'
         text = re.sub(
             pattern,
             lambda m: f'{m.group(1)}{version}{m.group(2)}{integrity}{m.group(3)}prev.lib.fakeHash{m.group(4)}',
@@ -95,7 +99,7 @@
         attr, got = sys.argv[1:3]
         path = Path("overlays/pi-packages/default.nix")
         text = path.read_text()
-        pattern = rf'(^  {re.escape(attr)} = prev.buildNpmPackage.*?npmDepsHash = )[^;]+(;)'
+        pattern = rf'(^  {re.escape(attr)} = .*?npmDepsHash = )[^;]+(;)'
         text = re.sub(
             pattern,
             lambda m: f'{m.group(1)}"{got}"{m.group(2)}',
@@ -113,8 +117,13 @@
         update_pi_package "pi-archimedes" "pi-archimedes" "pkgs/pi-archimedes"
         update_pi_package "pi-subagents" "pi-subagents" "pkgs/pi-subagents"
         update_pi_package "plannotator-pi-extension" "@plannotator/pi-extension" "pkgs/pi-extension"
+        update_pi_package "pi-wait-what" "@narumitw/pi-wait-what" "pkgs/pi-wait-what" true
+        update_pi_package "pi-lsp" "@narumitw/pi-lsp" "pkgs/pi-lsp" true
+        update_pi_package "pi-chrome-devtools" "@narumitw/pi-chrome-devtools" "pkgs/pi-chrome-devtools" true
+        update_pi_package "pi-btw" "@narumitw/pi-btw" "pkgs/pi-btw" true
+        update_pi_package "pi-goal" "@narumitw/pi-goal" "pkgs/pi-goal" true
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-archimedes .#pi-subagents .#plannotator-pi-extension .#ponytail --no-link
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-archimedes .#pi-subagents .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal --no-link
         nix run .#fmt
       '';
     };
