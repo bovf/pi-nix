@@ -41,12 +41,15 @@ sources.
 The overlay exposes a registry for declarative Home Manager config:
 
 ```nix
+pkgs.piPackages.hunk-review
 pkgs.piPackages.rpiv-todo
 pkgs.piPackages.pi-archimedes
 pkgs.piPackages.pi-subagents
 pkgs.piPackages.plannotator-pi-extension
 pkgs.piPackages.ponytail
 ```
+
+`hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill.
 
 Each entry is shaped like:
 
@@ -73,6 +76,7 @@ Then in a `badwater-ai` consumer:
 
 ```nix
 badwater.ai.pi.packages = with pkgs.piPackages; [
+  hunk-review
   pi-archimedes
   pi-subagents
   plannotator-pi-extension

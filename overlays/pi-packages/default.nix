@@ -1,5 +1,10 @@
-{...}: final: prev: {
+{hunk}: final: prev: {
   piPackages = {
+    hunk-review = {
+      name = "hunk-review";
+      package = hunk.packages.${final.stdenv.hostPlatform.system}.hunk;
+    };
+
     rpiv-todo = {
       name = "rpiv-todo";
       package = final.rpiv-todo;
