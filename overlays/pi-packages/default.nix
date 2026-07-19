@@ -204,7 +204,11 @@ in {
     postFixup = ''
       substituteInPlace "$out/src/index.ts" \
         --replace-fail '  // Register image paste (shortcuts, input handler, preview renderer)' '  // ponytail: Pi core owns cross-platform clipboard images and draft removal.' \
-        --replace-fail '  registerImagePaste(pi);' ""
+        --replace-fail '  registerImagePaste(pi);' "" \
+        --replace-fail '  // Register subagent tool' '  // ponytail: pi-subagents owns delegation; duplicate tool registration is fatal.' \
+        --replace-fail '  registerSubagent(pi);' "" \
+        --replace-fail '  // Register /agents command' "" \
+        --replace-fail '  registerAgentsCommand(pi);' ""
     '';
 
     installPhase = ''

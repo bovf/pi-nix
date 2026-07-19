@@ -61,7 +61,7 @@ pkgs.piPackages.pi-btw
 pkgs.piPackages.pi-goal
 ```
 
-`hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill. `pi-archimedes` leaves clipboard image handling to Pi core so one cross-platform paste path owns attachment and draft removal.
+`hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill. The packaged `pi-archimedes` leaves clipboard images to Pi core and delegation to `pi-subagents`, avoiding duplicate shortcuts and tools.
 
 Each entry is shaped like:
 
