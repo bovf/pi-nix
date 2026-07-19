@@ -67,6 +67,11 @@ in {
       package = final.pi-subagents;
     };
 
+    remote-pi = {
+      name = "remote-pi";
+      package = final.remote-pi;
+    };
+
     plannotator-pi-extension = {
       name = "plannotator-pi-extension";
       package = final.plannotator-pi-extension;
@@ -196,6 +201,12 @@ in {
       cp ${../../pkgs/pi-archimedes/package-lock.json} package-lock.json
     '';
 
+    postFixup = ''
+      substituteInPlace "$out/src/index.ts" \
+        --replace-fail '  // Register image paste (shortcuts, input handler, preview renderer)' '  // ponytail: Pi core owns cross-platform clipboard images and draft removal.' \
+        --replace-fail '  registerImagePaste(pi);' ""
+    '';
+
     installPhase = ''
       runHook preInstall
       mkdir -p $out
@@ -256,7 +267,8 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-u387UAmN0FXFbT1DP9DNXp3D7oH/LElXds7vG4sy+s8=";
+    npmDepsHash = "sha256-dS0lJ37/81e+Q7E32UnYuij7vriKGFLttDr4Atpq7qI=";
+    npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -291,7 +303,8 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-fk0ZICc27eYcip0HqPshMwZnOs4pAd+aI7y1oUUBbGU=";
+    npmDepsHash = "sha256-sSyUw1DiGxLyNoKbKiVQE9UGFEZdbVuBicka8Lb0+p4=";
+    npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -311,6 +324,47 @@ in {
     meta = {
       description = "Pi extension for delegating tasks to subagents";
       homepage = "https://github.com/nicobailon/pi-subagents";
+      license = prev.lib.licenses.mit;
+      platforms = prev.lib.platforms.unix;
+    };
+  };
+
+  remote-pi = prev.buildNpmPackage rec {
+    pname = "remote-pi";
+    version = "0.5.5";
+
+    src = prev.fetchurl {
+      url = "https://registry.npmjs.org/remote-pi/-/remote-pi-${version}.tgz";
+      hash = "sha512-HC8axMzCTb2//SLI+rZugIMdHym8VUgsa0a7dGdaPe+vW+YmyJ6ct3Vvfz/iSsqzzLpbA9QjQ4mgJfZNbIwe6Q==";
+    };
+
+    sourceRoot = "package";
+    npmDepsHash = "sha256-B+RiYCD/c8qj9Al33o5QOes4DsU446CVxcQNUnb7vaY=";
+    npmDepsFetcherVersion = 2;
+    dontNpmBuild = true;
+    npmFlags = ["--legacy-peer-deps" "--omit=dev"];
+    npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
+    npm_config_legacy_peer_deps = "true";
+
+    postPatch = ''
+      cp package.json package.json.upstream
+      ${prev.jq}/bin/jq 'del(.devDependencies)' package.json > package.json.nix
+      mv package.json.nix package.json
+      cp ${../../pkgs/remote-pi/package-lock.json} package-lock.json
+    '';
+
+    installPhase = ''
+      runHook preInstall
+      mv package.json.upstream package.json
+      rm package-lock.json
+      mkdir -p $out
+      cp -r . $out/
+      runHook postInstall
+    '';
+
+    meta = {
+      description = "Mobile remote control and local agent mesh for Pi";
+      homepage = "https://github.com/jacobaraujo7/remote_pi";
       license = prev.lib.licenses.mit;
       platforms = prev.lib.platforms.unix;
     };

@@ -51,10 +51,16 @@
       '';
 
     postFixup = "wrapProgram $out/bin/pi --prefix PATH : ${
-      prev.lib.makeBinPath [
-        prev.ripgrep
-        prev.fd
-      ]
+      prev.lib.makeBinPath (
+        [
+          prev.ripgrep
+          prev.fd
+        ]
+        ++ prev.lib.optionals prev.stdenv.hostPlatform.isLinux [
+          prev.wl-clipboard
+          prev.xclip
+        ]
+      )
     }";
 
     doInstallCheck = true;
