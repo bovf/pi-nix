@@ -1,16 +1,14 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.80.6";
+    version = "0.83.0";
 
-    src = prev.fetchFromGitHub {
-      owner = "earendil-works";
-      repo = "pi";
-      tag = "v${finalAttrs.version}";
-      hash = "sha256-e/wcHruEcBAHDF5tKvwew7LXjVp0eraHh2k+QaL2sCA=";
+    src = prev.fetchurl {
+      url = "https://github.com/earendil-works/pi/releases/download/v${finalAttrs.version}/pi-${finalAttrs.version}-source.tar.gz";
+      hash = "sha256-8iW4fsO0gl3VuU6SKoYpVYrdyjGhtNLCBq5Zio4mksA=";
     };
 
-    npmDepsHash = "sha256-xXEOR0epZcfbXayYGyJdBiFVliamBexqA+1Sd7wlGhU=";
+    npmDepsHash = "sha256-AbSfP1Ion8bN309NUBQb1QSn2cIIUjNONmZgls9vnYE=";
     npmWorkspace = "packages/coding-agent";
 
     # Skip native module rebuild for unneeded workspaces (e.g. canvas from web-ui).
@@ -51,10 +49,16 @@
       '';
 
     postFixup = "wrapProgram $out/bin/pi --prefix PATH : ${
-      prev.lib.makeBinPath [
-        prev.ripgrep
-        prev.fd
-      ]
+      prev.lib.makeBinPath (
+        [
+          prev.ripgrep
+          prev.fd
+        ]
+        ++ prev.lib.optionals prev.stdenv.hostPlatform.isLinux [
+          prev.wl-clipboard
+          prev.xclip
+        ]
+      )
     }";
 
     doInstallCheck = true;

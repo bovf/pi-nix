@@ -11,6 +11,26 @@
           curl -fsSL "https://registry.npmjs.org/$1"
         }
 
+        fill_missing_integrities() {
+          local lock="$1" tmp key resolved archive integrity
+          tmp=$(mktemp -d)
+          while IFS=$'\t' read -r key resolved; do
+            archive="$tmp/package.tgz"
+            curl -fsSL "$resolved" -o "$archive"
+            integrity=$(nix hash file --type sha512 --sri "$archive")
+            jq --arg key "$key" --arg integrity "$integrity" \
+              '.packages[$key].integrity = $integrity' "$lock" > "$lock.new"
+            mv "$lock.new" "$lock"
+          done < <(jq -r '
+            .packages | to_entries[]
+            | select(.key != "" and (.value.link // false | not)
+              and .value.integrity == null
+              and ((.value.resolved // "") | startswith("https://registry.npmjs.org/")))
+            | [.key, .value.resolved] | @tsv
+          ' "$lock")
+          rm -rf "$tmp"
+        }
+
         update_simple_npm() {
           local attr="$1" npm_name="$2" file="$3"
           local meta latest integrity tarball
@@ -39,7 +59,7 @@
         }
 
         update_pi_package() {
-          local attr="$1" npm_name="$2" lock_dir="$3" minimal_lock="''${4:-false}"
+          local attr="$1" npm_name="$2" lock_dir="$3" package_filter="''${4:-.}"
           local encoded meta latest integrity tarball tmp got out code
           encoded="$npm_name"
           if [[ "$npm_name" == @*/* ]]; then
@@ -52,11 +72,10 @@
 
           tmp=$(mktemp -d)
           curl -fsSL "$tarball" | tar -xz -C "$tmp"
-          if [ "$minimal_lock" = true ]; then
-            jq 'del(.devDependencies, .peerDependencies)' "$tmp/package/package.json" > "$tmp/package/package.json.nix"
-            mv "$tmp/package/package.json.nix" "$tmp/package/package.json"
-          fi
+          jq "$package_filter" "$tmp/package/package.json" > "$tmp/package/package.json.nix"
+          mv "$tmp/package/package.json.nix" "$tmp/package/package.json"
           (cd "$tmp/package" && npm install --package-lock-only --ignore-scripts --omit=dev --legacy-peer-deps >/dev/null)
+          fill_missing_integrities "$tmp/package/package-lock.json"
           cp "$tmp/package/package-lock.json" "$lock_dir/package-lock.json"
           rm -rf "$tmp"
 
@@ -116,14 +135,15 @@
         update_pi_package "rpiv-todo" "@juicesharp/rpiv-todo" "pkgs/rpiv-todo"
         update_pi_package "pi-archimedes" "pi-archimedes" "pkgs/pi-archimedes"
         update_pi_package "pi-subagents" "pi-subagents" "pkgs/pi-subagents"
+        update_pi_package "remote-pi" "remote-pi" "pkgs/remote-pi" "del(.devDependencies)"
         update_pi_package "plannotator-pi-extension" "@plannotator/pi-extension" "pkgs/pi-extension"
-        update_pi_package "pi-wait-what" "@narumitw/pi-wait-what" "pkgs/pi-wait-what" true
-        update_pi_package "pi-lsp" "@narumitw/pi-lsp" "pkgs/pi-lsp" true
-        update_pi_package "pi-chrome-devtools" "@narumitw/pi-chrome-devtools" "pkgs/pi-chrome-devtools" true
-        update_pi_package "pi-btw" "@narumitw/pi-btw" "pkgs/pi-btw" true
-        update_pi_package "pi-goal" "@narumitw/pi-goal" "pkgs/pi-goal" true
+        update_pi_package "pi-wait-what" "@narumitw/pi-wait-what" "pkgs/pi-wait-what" "del(.devDependencies, .peerDependencies)"
+        update_pi_package "pi-lsp" "@narumitw/pi-lsp" "pkgs/pi-lsp" "del(.devDependencies, .peerDependencies)"
+        update_pi_package "pi-chrome-devtools" "@narumitw/pi-chrome-devtools" "pkgs/pi-chrome-devtools" "del(.devDependencies, .peerDependencies)"
+        update_pi_package "pi-btw" "@narumitw/pi-btw" "pkgs/pi-btw" "del(.devDependencies, .peerDependencies)"
+        update_pi_package "pi-goal" "@narumitw/pi-goal" "pkgs/pi-goal" "del(.devDependencies, .peerDependencies)"
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-archimedes .#pi-subagents .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal --no-link
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal --no-link
         nix run .#fmt
       '';
     };
