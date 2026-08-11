@@ -1,14 +1,14 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.83.0";
+    version = "0.84.1";
 
     src = prev.fetchurl {
       url = "https://github.com/earendil-works/pi/releases/download/v${finalAttrs.version}/pi-${finalAttrs.version}-source.tar.gz";
-      hash = "sha256-8iW4fsO0gl3VuU6SKoYpVYrdyjGhtNLCBq5Zio4mksA=";
+      hash = "sha256-KU2AZ+tCMnvg20eS0755La/1iNj8IlSScKly7J5UB+c=";
     };
 
-    npmDepsHash = "sha256-AbSfP1Ion8bN309NUBQb1QSn2cIIUjNONmZgls9vnYE=";
+    npmDepsHash = "sha256-tufyZQRPAUeDtiq0UQodbKA/Y9xUAvNT8K+NWFjkeME=";
     npmWorkspace = "packages/coding-agent";
 
     # Skip native module rebuild for unneeded workspaces (e.g. canvas from web-ui).
@@ -19,9 +19,12 @@
     buildPhase = ''
       runHook preBuild
 
-      npx tsgo -p packages/ai/tsconfig.build.json
       npx tsgo -p packages/tui/tsconfig.build.json
+      npx tsgo -p packages/telemetry/tsconfig.build.json
+      npx tsgo -p packages/ai/tsconfig.build.json
       npx tsgo -p packages/agent/tsconfig.build.json
+      npx tsgo -p packages/protocol/tsconfig.build.json
+      npx tsgo -p packages/client/tsconfig.build.json
       npm run build --workspace=packages/coding-agent
 
       runHook postBuild
@@ -31,8 +34,11 @@
       ''
         local nm="$out/lib/node_modules/pi-monorepo/node_modules"
 
-        for ws in @earendil-works/pi-ai:packages/ai \
+        for ws in @earendil-works/pi-telemetry:packages/telemetry \
+                  @earendil-works/pi-ai:packages/ai \
                   @earendil-works/pi-agent-core:packages/agent \
+                  @earendil-works/pi-protocol:packages/protocol \
+                  @earendil-works/pi-client:packages/client \
                   @earendil-works/pi-tui:packages/tui; do
           IFS=: read -r pkg src <<< "$ws"
           rm "$nm/$pkg"
