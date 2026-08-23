@@ -1,14 +1,14 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.84.1";
+    version = "0.84.2";
 
     src = prev.fetchurl {
       url = "https://github.com/earendil-works/pi/releases/download/v${finalAttrs.version}/pi-${finalAttrs.version}-source.tar.gz";
-      hash = "sha256-KU2AZ+tCMnvg20eS0755La/1iNj8IlSScKly7J5UB+c=";
+      hash = "sha256-lqnvrSWPpvqJ9mG7+DDDVt07r2zQbGVDzk6CU8FDRg4=";
     };
 
-    npmDepsHash = "sha256-tufyZQRPAUeDtiq0UQodbKA/Y9xUAvNT8K+NWFjkeME=";
+    npmDepsHash = "sha256-6J5Efe+6ptCuR3VZojwYPZO8BBnnZsOQ4OAeB64uYOY=";
     npmWorkspace = "packages/coding-agent";
 
     # Skip native module rebuild for unneeded workspaces (e.g. canvas from web-ui).

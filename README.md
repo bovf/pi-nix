@@ -25,6 +25,7 @@ packages.${system}.pi-coding-agent
 packages.${system}.pi-vim
 packages.${system}.pi-search
 packages.${system}.pi-search-mcp
+packages.${system}.hunk-review
 packages.${system}.rpiv-todo
 packages.${system}.pi-archimedes
 packages.${system}.pi-subagents
@@ -111,15 +112,18 @@ nix run .#update        # update flake + managed Pi/npm packages, then build
 nix develop             # installs staged-file Alejandra pre-commit hook
 ```
 
-`nix run .#update` maintains:
+`nix run .#update` maintains every upstream pin (and refreshes the nixpkgs/Hunk flake inputs):
 
 ```text
+pi-coding-agent
 pi-vim
+hunk-review (Hunk flake input)
 rpiv-todo
 pi-archimedes
 pi-subagents
 remote-pi
 plannotator-pi-extension
+ponytail
 pi-wait-what
 pi-lsp
 pi-chrome-devtools
@@ -127,7 +131,7 @@ pi-btw
 pi-goal
 ```
 
-`ponytail` is pinned from GitHub and included in update validation.
+`pi-search` and `pi-search-mcp` remain local code and are build-validated without an upstream pin.
 
 Validated outputs:
 
@@ -136,6 +140,7 @@ pi-coding-agent
 pi-vim
 pi-search
 pi-search-mcp
+hunk-review
 rpiv-todo
 pi-archimedes
 pi-subagents
