@@ -2,7 +2,7 @@
   description = "Nix flake for pi-coding-agent and related pi extensions";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     hunk = {
       url = "github:modem-dev/hunk";
@@ -54,6 +54,7 @@
       };
     in {
       inherit (pkgs) pi-vim pi-search pi-search-mcp rpiv-todo pi-archimedes pi-subagents remote-pi plannotator-pi-extension ponytail pi-wait-what pi-lsp pi-chrome-devtools pi-btw pi-goal pi-coding-agent;
+      hunk-review = pkgs.piPackages.hunk-review.package;
       default = pkgs.pi-coding-agent;
     });
 
