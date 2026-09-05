@@ -39,9 +39,13 @@ packages.${system}.pi-btw
 packages.${system}.pi-goal
 ```
 
-`pi-coding-agent` is packaged directly from `earendil-works/pi`; package
-extensions are built Nix-natively from npm tarballs, lockfiles, or pinned GitHub
-sources.
+`pi-coding-agent` tracks npm's `latest` version, built from the matching
+`earendil-works/pi` Git tag and its upstream workspace lockfile. Git tags omit
+generated model data, so the matching, integrity-pinned `@earendil-works/pi-ai`
+npm catalog is copied in and validated by upstream's offline build. This also
+covers npm releases published before GitHub release assets are available.
+Extensions are built Nix-natively from npm tarballs, managed lockfiles, or pinned
+GitHub sources; no runtime/global npm installation is needed.
 
 ## Pi package registry
 
@@ -108,7 +112,10 @@ badwater.ai.pi.packages = with pkgs.piPackages; [
 ```bash
 nix run .#fmt           # auto-format Nix files with Alejandra
 nix run .#fmt -- --check
-nix run .#update        # update flake + managed Pi/npm packages, then build
+# Preserve existing Nix configuration while limiting this update's builds:
+NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG
+}max-jobs = 2
+cores = 4" nix run .#update  # update all pins/managed locks, then build
 nix develop             # installs staged-file Alejandra pre-commit hook
 ```
 
@@ -131,7 +138,46 @@ pi-btw
 pi-goal
 ```
 
-`pi-search` and `pi-search-mcp` remain local code and are build-validated without an upstream pin.
+The updater refreshes Hunk's transitive flake inputs as well as nixpkgs/Hunk.
+All ten managed npm locks are regenerated from package manifests, discarding
+published lockfiles/shrinkwraps even when the top-level version is unchanged.
+Upstream dependency constraints and existing dev/peer filtering are preserved;
+for example, `@narumitw/pi-tui-kit` stays at `0.59.0` under `^0.59.0`, not the
+incompatible `0.60.0` dist-tag. Pi core and Hunk retain their upstream build locks.
+
+`pi-search` and `pi-search-mcp` remain local code and are build-validated against
+the refreshed nixpkgs dependencies without an invented upstream version.
+
+### Checked pins (2026-09-05)
+
+| Package | Version |
+| --- | --- |
+| pi-coding-agent | 0.85.1 |
+| pi-vim | 0.14.2 |
+| hunk-review (Hunk) | 0.21.1 |
+| rpiv-todo | 2.9.0 |
+| pi-archimedes (and all 11 component packages) | 2.5.1 |
+| pi-subagents | 0.65.1 |
+| remote-pi | 0.7.0 (unchanged; nested lock refreshed) |
+| plannotator-pi-extension | 0.27.12 |
+| ponytail | 4.9.0 (unchanged) |
+| pi-wait-what | 0.13.1 (unchanged) |
+| pi-lsp | 0.49.6 |
+| pi-chrome-devtools | 0.53.1 |
+| pi-btw | 0.57.0 |
+| pi-goal | 0.54.4 |
+
+Regression checks: `python3 tests/update.py` (bash/jq required) exercises the
+updater offline. `tests/load-extensions.mjs` uses Pi's resource loader; run with
+Node from an empty HOME/cwd under `unshare -Urn` on Linux, passing the Pi store
+path then extension package store paths. This checks factories/resources only,
+not model calls, session lifecycle, browsers, LSP servers or remote services.
+
+All outputs below were built on `x86_64-linux`; `pi --version` returned `0.85.1`.
+Every packaged extension/Hunk resource loaded individually and together in an
+empty HOME/cwd with networking disabled. Local search usage and the MCP
+initialize/list-tools/empty-query path passed offline. All package derivations
+also evaluated on `aarch64-linux` and `aarch64-darwin` (not cross-built).
 
 Validated outputs:
 

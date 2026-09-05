@@ -6,6 +6,8 @@
       runtimeInputs = with pkgs; [curl jq nix nodejs python3 git];
       text = ''
         nix flake update
+        # Also refresh transitive inputs instead of retaining Hunk's bundled lock pins.
+        nix flake update hunk/bun2nix hunk/systems hunk/bun2nix/flake-parts hunk/bun2nix/treefmt-nix
 
         npm_meta() {
           curl -fsSL "https://registry.npmjs.org/$1"
@@ -63,24 +65,27 @@
         }
 
         update_pi_core() {
-          local release version source_url source_hash
-          release=$(github_release "earendil-works/pi")
-          version=$(echo "$release" | jq -er '.tag_name | sub("^v"; "")')
-          source_url="https://github.com/earendil-works/pi/releases/download/v$version/pi-$version-source.tar.gz"
+          local meta version source_url source_hash model_hash
+          meta=$(npm_meta "@earendil-works%2fpi-coding-agent")
+          version=$(echo "$meta" | jq -er '."dist-tags".latest')
+          source_url="https://github.com/earendil-works/pi/archive/refs/tags/v$version.tar.gz"
           source_hash=$(nix store prefetch-file --json "$source_url" | jq -er .hash)
-          python3 - "$version" "$source_hash" <<'PY'
+          model_hash=$(npm_meta "@earendil-works%2fpi-ai/$version" | jq -er '.dist.integrity')
+          [[ "$model_hash" == sha512-* ]] || exit 1
+          python3 - "$version" "$source_hash" "$model_hash" <<'PY'
         import re
         import sys
         from pathlib import Path
 
-        version, source_hash = sys.argv[1:3]
+        version, source_hash, model_hash = sys.argv[1:4]
         path = Path("overlays/pi-coding-agent/default.nix")
         text = path.read_text()
         text, version_count = re.subn(r'(version = ")[^"]+(";)', rf'\g<1>{version}\2', text, count=1)
         text, source_count = re.subn(r'(src = .*?hash = ")[^"]+(";)', rf'\g<1>{source_hash}\2', text, count=1, flags=re.S)
+        text, model_count = re.subn(r'(modelData = .*?hash = ")[^"]+(";)', rf'\g<1>{model_hash}\2', text, count=1, flags=re.S)
         text, npm_count = re.subn(r'(npmDepsHash = )[^;]+(;)', r'\g<1>prev.lib.fakeHash\2', text, count=1)
-        if (version_count, source_count, npm_count) != (1, 1, 1):
-            raise SystemExit(f"unexpected Pi substitutions: {(version_count, source_count, npm_count)}")
+        if (version_count, source_count, model_count, npm_count) != (1, 1, 1, 1):
+            raise SystemExit(f"unexpected Pi substitutions: {(version_count, source_count, model_count, npm_count)}")
         path.write_text(text)
         PY
           resolve_build_hash "pi-coding-agent" "overlays/pi-coding-agent/default.nix" "npmDepsHash"
@@ -188,7 +193,9 @@
           curl -fsSL "$tarball" | tar -xz -C "$tmp"
           jq "$package_filter" "$tmp/package/package.json" > "$tmp/package/package.json.nix"
           mv "$tmp/package/package.json.nix" "$tmp/package/package.json"
-          (cd "$tmp/package" && npm install --package-lock-only --ignore-scripts --omit=dev --legacy-peer-deps >/dev/null)
+          # Published locks can freeze transitive dependencies even on unchanged releases.
+          rm -f "$tmp/package/package-lock.json" "$tmp/package/npm-shrinkwrap.json"
+          (cd "$tmp/package" && npm install --package-lock-only --ignore-scripts --omit=dev --legacy-peer-deps --no-audit --no-fund >/dev/null)
           fill_missing_integrities "$tmp/package/package-lock.json"
           cp "$tmp/package/package-lock.json" "$lock_dir/package-lock.json"
           rm -rf "$tmp"

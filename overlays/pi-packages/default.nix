@@ -120,9 +120,9 @@ in {
 
   pi-lsp = mkNarumirunaExtension {
     pname = "pi-lsp";
-    version = "0.49.5";
-    hash = "sha512-okjzWwcN6LvvvPwfcHEAiuBJPSii/DbYfD6YCSVdXpx/okG1erIUMx9mJiC/oM1NVgOQctaB42sNQ+PNYvLPrw==";
-    npmDepsHash = "sha256-gPLX155AK6fvJCQ6KZ+DrpLXjlv4bPi6Izq1UiGqEys=";
+    version = "0.49.6";
+    hash = "sha512-ElqBaVyOCF8U4nkdOAxqvU560DsHZwwCm9Riy7He3bFhTsAzjuuXEGaoMYS0fdZCL16Y8heu2L5O1Cgv8SpDFw==";
+    npmDepsHash = "sha256-jK0jM1Yc2hK19nPQCKs5G3m1DHtMvT7KlwjiksJ1r54=";
     lockFile = ../../pkgs/pi-lsp/package-lock.json;
     description = "Configurable language-server tools for Pi";
     forceEmptyCache = true;
@@ -130,18 +130,18 @@ in {
 
   pi-chrome-devtools = mkNarumirunaExtension {
     pname = "pi-chrome-devtools";
-    version = "0.52.1";
-    hash = "sha512-93QpXiodfY1e330qa8IY+Yyxw2OmVT6A/7EPpGZAbNzymzRL/B5lS8zc8Zv92PnOERrjj4aJOIn0FPGZINE3Uw==";
-    npmDepsHash = "sha256-TNmtDCbAF68sUsccOVxiyc1OmGWDjSucG3CLA9neHik=";
+    version = "0.53.1";
+    hash = "sha512-mhvlkzPg6QyP+obRkIEWs80bwmHLtiEvSkQy6JS6E+A5COzT8a6iMiim6+bc8j1WY9BMGVIx8TnxTXr0lmjwbg==";
+    npmDepsHash = "sha256-wEpNmRK/DfNiBtTwcYjBGH2WECFRWWMwb5QymjscGeA=";
     lockFile = ../../pkgs/pi-chrome-devtools/package-lock.json;
     description = "Chrome DevTools Protocol tools for Pi";
   };
 
   pi-btw = mkNarumirunaExtension {
     pname = "pi-btw";
-    version = "0.55.1";
-    hash = "sha512-7xIr1f+q2uhvxTbEVzLKzbwt7x6NOPCWM8OQWo8GceqCOruGwjMLfNmznEbobXWAXQBn1IlTVVhewSDFYmiOYw==";
-    npmDepsHash = "sha256-sqc05puMKHNPZvpPrClyBg9G9jynetQvVGRKoWLqdeA=";
+    version = "0.57.0";
+    hash = "sha512-myJAX122oupTJX3NYDL8Gs6O6Xkurb1t6ddQgWLXXq+2L9sTMdW9TnVq2Rk9OWlGAkMfP1MSpur3kmdXy8gPfA==";
+    npmDepsHash = "sha256-/aE037QOKyYE7ScaoEq/Pl48O8mol7MtimWjPXcEJfA=";
     lockFile = ../../pkgs/pi-btw/package-lock.json;
     description = "Side-question command for Pi";
     forceEmptyCache = true;
@@ -149,9 +149,9 @@ in {
 
   pi-goal = mkNarumirunaExtension {
     pname = "pi-goal";
-    version = "0.53.0";
-    hash = "sha512-cmWowqAzlkgRLKYp2hFnUZvEEs6G6aGjEOazBWNW88T7LB9cd/AzOFOGYvA1QxxsGtIdOuFRZJVhfAJDGsAcjw==";
-    npmDepsHash = "sha256-B4nwrp8q9We5Rv+Rgi///SVDjEHCkZ3nQq/UnbJG9sw=";
+    version = "0.54.4";
+    hash = "sha512-WqGGYnX5YBaEUlkC2Lh3sFHizJ6/hiGBijybOBv/7RRDZvpMdfygORIl5OHhzqSPekC9+z0ROxiCzPE6hS17jQ==";
+    npmDepsHash = "sha256-4rZLGUnJvL64pEJ+Eo+G+bnihN2KOh+2MygHrSAiXzU=";
     lockFile = ../../pkgs/pi-goal/package-lock.json;
     description = "Persistent goal mode for Pi";
   };
@@ -184,15 +184,15 @@ in {
 
   pi-archimedes = prev.buildNpmPackage rec {
     pname = "pi-archimedes";
-    version = "2.2.0";
+    version = "2.5.1";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
-      hash = "sha512-gLBSCipwDaYZestNmDihrq2blNevdm09D74qfruSygsKqsnH8KjUoUDUbGEm4Cr2pJxZlFus22BuGkCWFzHryg==";
+      hash = "sha512-TJ7SYyLxnFZQAyzTYZNIO5284C09onyVnOunOvSCErQeSs9x6yE7+g/JlfR35Nfzn9xmozDvJwMZRLxHyAONDA==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-fVpy6FHzz0OncR9QfBy9nDRxhGUo4kaoAoE5J1OcNlE=";
+    npmDepsHash = "sha256-zxv0P45KWHKA1BCpQ5RV7CKZEKiXus9nBzWn7gvOOWA=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -204,8 +204,8 @@ in {
 
     postFixup = ''
       substituteInPlace "$out/src/index.ts" \
-        --replace-fail '      import("@pi-archimedes/image-paste").catch((e) => { console.error("[archimedes] image-paste load failed:", e); return null; }),' '      Promise.resolve(null), // ponytail: Pi core owns clipboard image handling.' \
-        --replace-fail '      import("@pi-archimedes/subagent").catch((e) => { console.error("[archimedes] subagent load failed:", e); return null; }),' '      Promise.resolve(null), // ponytail: pi-subagents owns delegation.'
+        --replace-fail 'isPluginEnabled("image-paste")' 'false /* Pi core owns clipboard image handling. */' \
+        --replace-fail 'isPluginEnabled("subagent")' 'false /* pi-subagents owns delegation. */'
     '';
 
     installPhase = ''
@@ -225,15 +225,15 @@ in {
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";
-    version = "2.7.0";
+    version = "2.9.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@juicesharp/rpiv-todo/-/rpiv-todo-${version}.tgz";
-      hash = "sha512-3jy8WIUY2q2TYLMPUwuSTugBHwlkDLccAqRymU700vZKXeJZNxg99B+pcT2ochIF31QsReNY8zpDKG+kxh5yNQ==";
+      hash = "sha512-kETvX1ysqm2ff8OQU/FvDlT/9oVGgIki5Z5WeolNqVd/YCA+TOL3n0l5FDOsm4rJKPPKjJ1xHNBdgsC2XngZIQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-dq1mnyhBgfFTt1Z/sVfgq+3O1Pih4avumAZ5kNsYhzg=";
+    npmDepsHash = "sha256-h7uG8aJXvJfcJ/CLXW6g+vnyfCnYib+wIlM4lgYMxfo=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
@@ -260,15 +260,15 @@ in {
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.27.6";
+    version = "0.27.12";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-1VfGGe0hIBOyCe1+TdXU9EH4OrLCtw4fagw7P2QpJ1JgKldNnhPxyix+aAIjIqA3b9W9EQu/S4dL/YYhjmLcEg==";
+      hash = "sha512-fEJKoNIXv/jhZSDMSUMWsrikmRkQ4EF3OE6FZAgPQN2mAEt2BLyUfafU1oez8TGQ7sHlv+B/gc94yFNAutn27w==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-jMpQI7tMokPMFeEWT+DLj0ogGQ4d6hom9zpBjvKgF1M=";
+    npmDepsHash = "sha256-zLpR8MzuiJWQjGIoY9rH33y2VZi6Xo08Qw5tpaOkXrU=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -296,15 +296,15 @@ in {
 
   pi-subagents = prev.buildNpmPackage rec {
     pname = "pi-subagents";
-    version = "0.55.0";
+    version = "0.65.1";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-subagents/-/pi-subagents-${version}.tgz";
-      hash = "sha512-YRjaDcFWNZrDG7mYSSy4LQn/uXo0VDEpVDyXsXjHgSU0FAHp9fnuLtAjm6y1g7BxFf1Lp3RB1O//325PD5bplg==";
+      hash = "sha512-t5Ik4pHNp/E87a36cuHpTrWaXPEQZzb2mOyZzKRuRtBXm5Z9Ht91nu9mZHrjKj83XYL3SL1kXJdmwBWqm/9fmg==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-6lIHd/IrH4PeehNJF1OSqdVodHcetRAUc3UE0sLmDpc=";
+    npmDepsHash = "sha256-61wSSsg04Vj0DtuxuKi+xzX/eWRHN48aTouPGq+losc=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -340,7 +340,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-JH/f+pJH/ZwzEcMSuDeRBwaQqREAG8cI5yucez5gT78=";
+    npmDepsHash = "sha256-ej3/a/30Wq6I0ObtyI5ozCD+9Ac+Azs1plvW7VTEcPc=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
