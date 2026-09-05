@@ -35,6 +35,7 @@
       npx tsgo -p packages/agent/tsconfig.build.json
       npx tsgo -p packages/protocol/tsconfig.build.json
       npx tsgo -p packages/client/tsconfig.build.json
+      npx tsgo -p packages/server/tsconfig.build.json
       npm run build --workspace=packages/coding-agent
 
       runHook postBuild
@@ -50,6 +51,7 @@
                   @earendil-works/pi-agent-core:packages/agent \
                   @earendil-works/pi-protocol:packages/protocol \
                   @earendil-works/pi-client:packages/client \
+                  @earendil-works/pi-server:packages/server \
                   @earendil-works/pi-tui:packages/tui; do
           IFS=: read -r pkg src <<< "$ws"
           rm "$nm/$pkg"

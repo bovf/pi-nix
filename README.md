@@ -44,6 +44,9 @@ packages.${system}.pi-goal
 generated model data, so the matching, integrity-pinned `@earendil-works/pi-ai`
 npm catalog is copied in and validated by upstream's offline build. This also
 covers npm releases published before GitHub release assets are available.
+The matching `pi-server` workspace (including `pi-server/unix`) is built and
+installed alongside the other host peers for `pi-subagents` background runners;
+its extension-local Pi 0.85.0 fallback must not replace host Pi 0.85.1 APIs.
 Extensions are built Nix-natively from npm tarballs, managed lockfiles, or pinned
 GitHub sources; no runtime/global npm installation is needed.
 
@@ -172,6 +175,26 @@ updater offline. `tests/load-extensions.mjs` uses Pi's resource loader; run with
 Node from an empty HOME/cwd under `unshare -Urn` on Linux, passing the Pi store
 path then extension package store paths. This checks factories/resources only,
 not model calls, session lifecycle, browsers, LSP servers or remote services.
+
+`tests/subagents-host-peers.mjs` additionally runs the installed pi-subagents
+host-peer resolver, imports all 16 aliases from the matching Pi output without
+fallback, and starts a child-process Unix server for a credential-free protocol
+handshake and clean shutdown. It uses upstream's in-memory server test host,
+not a model session. Run with Node 24 from an empty HOME/cwd, for example:
+
+```bash
+export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG
+}max-jobs = 2
+cores = 4"
+core=$(nix build .#pi-coding-agent --no-link --print-out-paths)
+subagents=$(nix build .#pi-subagents --no-link --print-out-paths)
+test="$PWD/tests/subagents-host-peers.mjs"
+node=$(command -v node)
+home=$(mktemp -d)
+(cd "$home" && env -i HOME="$home" PATH="$PATH" \
+  timeout 45 unshare -Urn "$node" "$test" "$core" "$subagents")
+rm -rf "$home"
+```
 
 All outputs below were built on `x86_64-linux`; `pi --version` returned `0.85.1`.
 Every packaged extension/Hunk resource loaded individually and together in an
