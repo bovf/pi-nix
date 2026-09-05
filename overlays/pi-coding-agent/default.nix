@@ -1,15 +1,24 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.84.2";
+    version = "0.85.1";
 
     src = prev.fetchurl {
-      url = "https://github.com/earendil-works/pi/releases/download/v${finalAttrs.version}/pi-${finalAttrs.version}-source.tar.gz";
-      hash = "sha256-lqnvrSWPpvqJ9mG7+DDDVt07r2zQbGVDzk6CU8FDRg4=";
+      url = "https://github.com/earendil-works/pi/archive/refs/tags/v${finalAttrs.version}.tar.gz";
+      hash = "sha256-OGypT89n/ybS+lF9UgQUudjTOPTQ4vf+jHEh2Nbz8yY=";
     };
 
-    npmDepsHash = "sha256-6J5Efe+6ptCuR3VZojwYPZO8BBnnZsOQ4OAeB64uYOY=";
+    npmDepsHash = "sha256-jzlsZIQzfl1FCZZ5//dHFWwMfBZQ4nRD6KB4HHifPqE=";
     npmWorkspace = "packages/coding-agent";
+
+    # Git tags omit generated model data; use the matching published catalog offline.
+    modelData = prev.fetchurl {
+      url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${finalAttrs.version}.tgz";
+      hash = "sha512-+VgVIJDkDO2efYJKEEqvPTH4zmnIaXdAppGbO+vKFA9qy5PdhFiAenuFAkU+oiCSfOC4dMHDyrjdQeL4ZoC5CQ==";
+    };
+    postPatch = ''
+      tar -xzf ${finalAttrs.modelData} --strip-components=3 -C packages/ai/src/providers package/dist/providers/data
+    '';
 
     # Skip native module rebuild for unneeded workspaces (e.g. canvas from web-ui).
     npmRebuildFlags = ["--ignore-scripts"];
@@ -19,12 +28,14 @@
     buildPhase = ''
       runHook preBuild
 
+      npm run build --workspace=packages/chord
       npx tsgo -p packages/tui/tsconfig.build.json
       npx tsgo -p packages/telemetry/tsconfig.build.json
-      npx tsgo -p packages/ai/tsconfig.build.json
+      npm run build:offline --workspace=packages/ai
       npx tsgo -p packages/agent/tsconfig.build.json
       npx tsgo -p packages/protocol/tsconfig.build.json
       npx tsgo -p packages/client/tsconfig.build.json
+      npx tsgo -p packages/server/tsconfig.build.json
       npm run build --workspace=packages/coding-agent
 
       runHook postBuild
@@ -34,11 +45,13 @@
       ''
         local nm="$out/lib/node_modules/pi-monorepo/node_modules"
 
-        for ws in @earendil-works/pi-telemetry:packages/telemetry \
+        for ws in @earendil-works/chord:packages/chord \
+                  @earendil-works/pi-telemetry:packages/telemetry \
                   @earendil-works/pi-ai:packages/ai \
                   @earendil-works/pi-agent-core:packages/agent \
                   @earendil-works/pi-protocol:packages/protocol \
                   @earendil-works/pi-client:packages/client \
+                  @earendil-works/pi-server:packages/server \
                   @earendil-works/pi-tui:packages/tui; do
           IFS=: read -r pkg src <<< "$ws"
           rm "$nm/$pkg"
