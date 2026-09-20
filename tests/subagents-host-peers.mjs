@@ -1,8 +1,10 @@
 // Run with Node 24 in an empty HOME/cwd and a Linux network namespace:
 // unshare -Urn node tests/subagents-host-peers.mjs <pi store path> <pi-subagents store path>
-// Uses the installed extension's resolver, not a copied alias list or fallback.
+// Checks the installed resolver and native background child-session factory.
+// The retained Pi server Unix handshake is a separate packaging check, not the
+// pi-subagents 0.70 background transport (which now uses in-process SDK sessions).
 import assert from "node:assert/strict";
-import { fork } from "node:child_process";
+import { fork, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
@@ -13,24 +15,79 @@ const [core, subagents, childSocket, childServerId] = process.argv.slice(2);
 assert(core && subagents, "provide Pi and pi-subagents store paths");
 const root = `${core}/lib/node_modules/pi-monorepo`;
 const { HOST_PEER_ALIASES, resolveHostPeerAliases, resolvePackageSubpath } = await import(
-  pathToFileURL(`${subagents}/src/runs/background/runner-aliases.ts`)
+  pathToFileURL(`${subagents}/src/runs/background/runner-aliases.js`)
 );
-const resolved = resolveHostPeerAliases(root, subagents);
+const resolved = resolveHostPeerAliases(root);
 assert.deepEqual(resolved.missing, [], "background runner host peers must exist");
-assert.deepEqual(resolved.supplemental, [], "must use host peers, not extension-local Pi 0.85.0");
+// The resolver adds these required aliases for Pi >= 0.85 (not exported in its list).
+const required = [...HOST_PEER_ALIASES,
+  { specifier: "@earendil-works/chord", pkg: "@earendil-works/chord" },
+  { specifier: "@earendil-works/chord/context", pkg: "@earendil-works/chord" },
+];
+assert.deepEqual(Object.keys(resolved.aliases).sort(), required.map(({ specifier }) => specifier).sort());
 const hostVersion = JSON.parse(await readFile(`${root}/package.json`, "utf8")).version;
 const modules = {};
-for (const { specifier, pkg } of HOST_PEER_ALIASES) {
-  const target = await realpath(resolved.aliases[specifier]);
+const serverPeers = [
+  { specifier: "@earendil-works/pi-server", pkg: "@earendil-works/pi-server", subpath: "." },
+  { specifier: "@earendil-works/pi-server/unix", pkg: "@earendil-works/pi-server", subpath: "./unix" },
+  { specifier: "@earendil-works/pi-client/unix", pkg: "@earendil-works/pi-client", subpath: "./unix" },
+  { specifier: "@earendil-works/pi-protocol", pkg: "@earendil-works/pi-protocol", subpath: "." },
+];
+for (const { specifier, pkg, subpath } of [...required, ...serverPeers]) {
+  const target = await realpath(resolved.aliases[specifier] ?? resolvePackageSubpath(`${root}/node_modules/${pkg}`, subpath));
   assert(target.startsWith(`${core}/`), `${specifier} escaped the host output`);
   if (pkg !== "typebox") {
     const packageDir = pkg.endsWith("/pi-coding-agent") ? root : `${root}/node_modules/${pkg}`;
     assert.equal(JSON.parse(await readFile(`${packageDir}/package.json`, "utf8")).version, hostVersion);
   }
-  modules[specifier] = await import(pathToFileURL(target));
+  if (childSocket && specifier in resolved.aliases) {
+    assert.equal(await realpath(fileURLToPath(import.meta.resolve(specifier))), target,
+      `${specifier} must resolve through the installed preload to the host`);
+    modules[specifier] = await import(specifier);
+  } else {
+    modules[specifier] = await import(pathToFileURL(target));
+  }
 }
 
 if (childSocket) {
+  // Exercise the actual installed background factory with the real host SDK,
+  // not an injected fake session. Never prompt, query credentials, or call a model.
+  const { loadRunnerChildSessionFactory } = await import(
+    pathToFileURL(`${subagents}/src/runs/background/runner-child-sessions.js`)
+  );
+  const factory = await loadRunnerChildSessionFactory({});
+  const lifecycle = [];
+  const errors = [];
+  try {
+    const session = await factory.create({
+      cwd: process.cwd(), storage: { kind: "memory" },
+      ambientExtensions: false, extensionPaths: [], noSkills: true, noContextFiles: true,
+      tools: [], runtime: {},
+      hooks: [{ name: "packaging-lifecycle", factory(pi) {
+        pi.on("session_start", (event, ctx) => {
+          assert.equal(event.reason, "startup");
+          assert.equal(ctx.mode, "print");
+          lifecycle.push("start");
+        });
+        pi.on("session_shutdown", (event) => {
+          assert.equal(event.reason, "quit");
+          lifecycle.push("shutdown");
+        });
+      } }],
+      onExtensionError: (error) => errors.push(error),
+    });
+    assert(session.sessionId);
+    assert.equal(session.sessionFile, undefined);
+    assert.equal(session.hasQueuedMessages(), false);
+    assert.deepEqual(lifecycle, ["start"]);
+    await session.dispose();
+    assert.deepEqual(lifecycle, ["start", "shutdown"]);
+    assert.deepEqual(errors, []);
+  } finally {
+    await factory.dispose();
+  }
+  console.log("PASS: installed native preload resolved all bare host peers; default background child factory created/disposed an in-memory SDK session; lifecycle hooks; no prompt");
+
   const testing = resolvePackageSubpath(`${root}/node_modules/@earendil-works/pi-server`, "./testing");
   const { TestServerHost } = await import(pathToFileURL(testing));
   const server = modules["@earendil-works/pi-server/unix"].createUnixServer(new TestServerHost(), {
@@ -47,11 +104,45 @@ if (childSocket) {
     process.disconnect();
   }
 } else {
+  // Match async-execution.js's installed JS runner branch, not the JITI CLI.
+  const execArgv = ["--import", pathToFileURL(`${subagents}/runner-peer-preload.mjs`).href];
+  const env = {
+    ...process.env,
+    PI_SUBAGENTS_PI_CODING_AGENT_PACKAGE_ROOT: root,
+    PI_PACKAGE_DIR: root,
+    JITI_ALIAS: JSON.stringify(resolved.aliases),
+    PI_ASYNC_NATIVE_RUNNER: "1",
+  };
+  // Reach the real entrypoint's config-read boundary without scheduling a task.
+  // Without aliases the same runner must fail earlier, while importing host peers.
+  const missingConfig = join(process.cwd(), `missing-runner-config-${randomUUID()}.json`);
+  const runnerArgs = [...execArgv, `${subagents}/src/runs/background/subagent-runner.js`, missingConfig];
+  for (const aliasesPresent of [true, false]) {
+    const probe = spawnSync(process.execPath, runnerArgs, {
+      env: aliasesPresent ? env : { ...env, JITI_ALIAS: "{}" },
+      encoding: "utf8", timeout: 10_000,
+    });
+    assert.ifError(probe.error);
+    assert.equal(probe.signal, null);
+    assert.equal(probe.status, 1, probe.stderr);
+    if (aliasesPresent) {
+      assert.match(probe.stderr, /Subagent runner error:.*ENOENT/);
+      assert(probe.stderr.includes(missingConfig), probe.stderr);
+      assert(!probe.stderr.includes("ERR_MODULE_NOT_FOUND"), probe.stderr);
+    } else {
+      assert.match(probe.stderr, /ERR_MODULE_NOT_FOUND/);
+      assert.match(probe.stderr, /Cannot find package '@earendil-works\/pi-[^']+'/);
+      assert(!probe.stderr.includes("Subagent runner error:"), probe.stderr);
+    }
+  }
+  console.log("PASS: installed runner imports/startup reached config read with host aliases; absent-alias negative control failed at peer import");
+
   // Upstream's in-memory test host: transport/hello only, no sessions or model calls.
   const directory = await mkdtemp("/tmp/pi-peer-");
   const serverId = randomUUID();
   const socket = join(directory, `${serverId}.sock`);
   const child = fork(fileURLToPath(import.meta.url), [core, subagents, socket, serverId], {
+    execArgv, env,
     stdio: ["ignore", "inherit", "inherit", "ipc"],
   });
   const exited = once(child, "exit");
@@ -62,7 +153,7 @@ if (childSocket) {
     assert.deepEqual(routes, [{ serverId, path: socket }]);
     child.send("stop");
     assert.deepEqual(await exited, [0, null]);
-    console.log(`PASS: ${HOST_PEER_ALIASES.length} host aliases imported at Pi ${hostVersion}; no fallback; child Unix handshake and shutdown`);
+    console.log(`PASS: ${required.length} complete host aliases at Pi ${hostVersion}; host-only imports; separate Pi server Unix handshake and shutdown`);
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
     await exited;

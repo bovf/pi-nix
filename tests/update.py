@@ -59,4 +59,27 @@ with tempfile.TemporaryDirectory() as directory:
         }
     ''' + refresh, "test", str(tmp)], check=True)
     assert json.loads((package / "package-lock.json").read_text())["lockfileVersion"] == 3
-print("PASS: npm-latest core/tag/model pins; published locks removed before regeneration")
+release = "github_release() {" + shell_section("        github_release() {", "        resolve_build_hash() {")
+subprocess.run(["bash", "-euc", '''
+    unset GITHUB_TOKEN GH_TOKEN
+    curl() {
+      case "$*" in
+        '-fsSL https://api.github.com/repos/owner/repo/releases/latest') return 22 ;;
+        '-fsSL -o /dev/null -w %{url_effective} https://github.com/owner/repo/releases/latest')
+          printf '%s' "$mock_release_url" ;;
+        *) return 1 ;;
+      esac
+    }
+''' + release + '''
+    mock_release_url=https://github.com/owner/repo/releases/tag/v4.10.0
+    test "$(github_release owner/repo | jq -r .tag_name)" = v4.10.0
+    for mock_release_url in https://github.com/owner/repo/releases/latest \\
+        https://github.com/other/repo/releases/tag/v4.10.0 \\
+        https://github.com/owner/repo/releases/tag/v4.10.0-beta.1; do
+      if github_release owner/repo >/dev/null 2>&1; then
+        echo 'accepted an invalid release redirect' >&2
+        exit 1
+      fi
+    done
+'''], check=True)
+print("PASS: npm-latest core/tag/model pins; fresh locks; stable public release redirect with invalid targets rejected")

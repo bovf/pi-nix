@@ -14,15 +14,19 @@
         }
 
         github_release() {
-          local repo="$1" token="''${GITHUB_TOKEN:-}"
+          local repo="$1" token="''${GITHUB_TOKEN:-}" release_url tag
           [ -n "$token" ] || token="''${GH_TOKEN:-}"
           if [ -n "$token" ]; then
             curl -fsSL -H "Authorization: Bearer $token" "https://api.github.com/repos/$repo/releases/latest"
-          else
-            curl -fsSL "https://api.github.com/repos/$repo/releases/latest" || {
-              echo "GitHub release lookup failed; set GITHUB_TOKEN or GH_TOKEN if rate-limited." >&2
+          elif ! curl -fsSL "https://api.github.com/repos/$repo/releases/latest"; then
+            # The public release redirect remains usable when the anonymous API is rate-limited.
+            release_url=$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/$repo/releases/latest")
+            tag="''${release_url#"https://github.com/$repo/releases/tag/"}"
+            [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "GitHub latest release did not resolve to a stable version tag for $repo" >&2
               return 1
             }
+            jq -n --arg tag "$tag" '{tag_name: $tag}'
           fi
         }
 
