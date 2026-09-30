@@ -16,7 +16,7 @@ const loader = new DefaultResourceLoader({
   noContextFiles: true,
 });
 await loader.reload();
-const { extensions, errors } = loader.getExtensions();
+const { extensions, errors, warnings = [] } = loader.getExtensions();
 console.log(JSON.stringify({
   packages,
   extensions: extensions.map((extension) => ({
@@ -25,9 +25,17 @@ console.log(JSON.stringify({
     commands: [...extension.commands.keys()],
   })),
   errors,
+  warnings,
   skills: loader.getSkills().skills.map((skill) => skill.name),
   skillDiagnostics: loader.getSkills().diagnostics,
+  prompts: loader.getPrompts().prompts.map((prompt) => prompt.name),
+  promptDiagnostics: loader.getPrompts().diagnostics,
+  themes: loader.getThemes().themes.map((theme) => theme.name),
+  themeDiagnostics: loader.getThemes().diagnostics,
 }, null, 2));
 assert.deepEqual(errors, []);
+assert.deepEqual(loader.getSkills().diagnostics, []);
+assert.deepEqual(loader.getPrompts().diagnostics, []);
+assert.deepEqual(loader.getThemes().diagnostics, []);
 assert(extensions.length || loader.getSkills().skills.length, "no resources loaded");
 process.exit(0);

@@ -59,6 +59,14 @@ with tempfile.TemporaryDirectory() as directory:
         }
     ''' + refresh, "test", str(tmp)], check=True)
     assert json.loads((package / "package-lock.json").read_text())["lockfileVersion"] == 3
+
+    rooted_build = "resolve_build_hash() {" + shell_section(
+        "        resolve_build_hash() {", "        update_pi_core() {")
+    subprocess.run(["bash", "-euc", '''
+        build_roots="$1"
+        nix() { test "$*" = "build .#fixture --out-link $build_roots/fixture"; }
+    ''' + rooted_build + '\nresolve_build_hash fixture unused unused\n',
+        "test", str(tmp)], check=True)
 release = "github_release() {" + shell_section("        github_release() {", "        resolve_build_hash() {")
 subprocess.run(["bash", "-euc", '''
     unset GITHUB_TOKEN GH_TOKEN
@@ -82,4 +90,4 @@ subprocess.run(["bash", "-euc", '''
       fi
     done
 '''], check=True)
-print("PASS: npm-latest core/tag/model pins; fresh locks; stable public release redirect with invalid targets rejected")
+print("PASS: npm-latest core/tag/model pins; fresh locks; rooted builds; stable public release redirect with invalid targets rejected")

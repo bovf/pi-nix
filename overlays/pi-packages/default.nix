@@ -139,9 +139,9 @@ in {
 
   pi-btw = mkNarumirunaExtension {
     pname = "pi-btw";
-    version = "0.60.3";
-    hash = "sha512-Kvnq9otDG4Tt1vWaLC4NGDXt73iVMvwoOIYeuk8//YsB47QMAUjEGDFu6Ws5MKPjdcnApkKzkJhfSveLbqjJTQ==";
-    npmDepsHash = "sha256-wNYByMeBW1/GsgzzyIkFWxXiPwoAGxc5GKNX5o46j7c=";
+    version = "0.61.1";
+    hash = "sha512-s1AsDNnF4eEeQGByoI+m0Y7gewTkR3KlsnhToLvVJTQqlZWHtIBUlkrODtSan2rBKcYH2GdxlNx9G7WC6N0LvA==";
+    npmDepsHash = "sha256-RZv8DKsYs/Yu+0KzKSFEEc/g5PQbvHMsFMP7+tF5jJw=";
     lockFile = ../../pkgs/pi-btw/package-lock.json;
     description = "Side-question command for Pi";
     forceEmptyCache = true;
@@ -184,15 +184,15 @@ in {
 
   pi-archimedes = prev.buildNpmPackage rec {
     pname = "pi-archimedes";
-    version = "2.7.3";
+    version = "2.8.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
-      hash = "sha512-YLJfnG4LDBxnfva/K2U3fuQRfGtmJ5Ntc54RkeELdKnAPv2q9FoGu81mWZR1H1ZXxIZwOEyPQgINPgAVmfYLmw==";
+      hash = "sha512-7S2eGa51JJDdypLsgDM4ugE3J7vBC2neztYOvLkY+Qj7MkXLaDx5s4H98vrFgmt0UiOggejDORFV/rQEsmxxuA==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-iysXjUt1p39NPjdlrLpzFFal7CSf6dKLf9TnVMqvfpQ=";
+    npmDepsHash = "sha256-mbMXxo028MY14laOub2QuFCpGNSsKyFFS8r5VXy//aE=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -225,15 +225,15 @@ in {
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";
-    version = "2.10.1";
+    version = "2.11.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@juicesharp/rpiv-todo/-/rpiv-todo-${version}.tgz";
-      hash = "sha512-3VvPztpStw9bp99Iq2z6IsbHL7fGpOY0ugTTE7fzSRipgQY3LkdazuBK6TnKr4jaqungHNbAoUF7e/6gsTz8eg==";
+      hash = "sha512-MNWG3xRMKrA4qgL3O1F4WiuY9+3NAWem+5Ac0NDHqYTGjikGRf6b4SdL9bw+RdEOEj2BUaKFSeTbP8vLZw5CDQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-zx4JtKcjgm+Ps4cN1nigqMhMwcljQrvpB01wXq/Bo4w=";
+    npmDepsHash = "sha256-klkl/dG8ygctSkzdJm/1oJ4HTFPtys31KuevY276AoA=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
@@ -260,15 +260,15 @@ in {
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.27.16";
+    version = "0.27.22";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-LfS/EkMD4b+Dzu2kKp/2YORqH27dVbRXhaLYbzqQaK1AtMPexPvBPebZQs4xXBUveanTkYkBKTfp7uT8VeQ5jQ==";
+      hash = "sha512-9ctdYu5WuolWtvoIgwpvKGEiVyLRVhHi9CSMKRsPMi6M5vnCW/GaejCuTq5X/peysSZBufsWwSVySFQ+ycEdZQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-grJRpTZ6WaU7HuBZRa35p0huumL9fPWAJ/62JBqvn2o=";
+    npmDepsHash = "sha256-BSlXLteFquhHR9195YeYTAyX/t4TQr6P1M/Hj/TRDdI=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -296,15 +296,15 @@ in {
 
   pi-subagents = prev.buildNpmPackage rec {
     pname = "pi-subagents";
-    version = "0.70.0";
+    version = "0.73.1";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-subagents/-/pi-subagents-${version}.tgz";
-      hash = "sha512-UkGCym5fFKc1VGRzzE8F2govFwez7zvCOHNV0o+LnNwI/y6QbZNo3U6kIeK9hdBHGAL3e5a+UGiROc4mZR/8lg==";
+      hash = "sha512-IklOqw67DtvIWQFKxFJpDFXsOGcq8RGYZEbokykD5Kvfs9aa/du1cW2NEJ5xx4GUgN2LVt3vAq5IdzEMo7YwJw==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-e9+UAh4r5VQyqPiMdN2Dne68oK+r22UQWynCtxobE38=";
+    npmDepsHash = "sha256-3QM1aPdALyTyH9YtNw1nJdyY+c9/v714tqrw4G73rpI=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -340,7 +340,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-OpM27hdoisnHfQHglfWO7utpvgf202szfkA8LSq8pnU=";
+    npmDepsHash = "sha256-QkQZgh67ZCurLEWxcqRswrUTGkoG5IS1M992oUr92xY=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];

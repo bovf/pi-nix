@@ -5,6 +5,8 @@
       name = "update";
       runtimeInputs = with pkgs; [curl jq nix nodejs python3 git];
       text = ''
+        build_roots=$(mktemp -d "''${TMPDIR:-/tmp}/pi-nix-update.XXXXXX")
+        echo "Keeping update build roots in $build_roots"
         nix flake update
         # Also refresh transitive inputs instead of retaining Hunk's bundled lock pins.
         nix flake update hunk/bun2nix hunk/systems hunk/bun2nix/flake-parts hunk/bun2nix/treefmt-nix
@@ -33,7 +35,7 @@
         resolve_build_hash() {
           local attr="$1" file="$2" field="$3" out code got
           set +e
-          out=$(nix build ".#$attr" --no-link 2>&1)
+          out=$(nix build ".#$attr" --out-link "$build_roots/$attr" 2>&1)
           code=$?
           set -e
           if [ "$code" -eq 0 ]; then
@@ -65,7 +67,7 @@
             raise SystemExit(f"expected one {field} substitution for {attr}, got {count}")
         path.write_text(text)
         PY
-          nix build ".#$attr" --no-link
+          nix build ".#$attr" --out-link "$build_roots/$attr"
         }
 
         update_pi_core() {
@@ -243,7 +245,7 @@
         update_pi_package "pi-goal" "@narumitw/pi-goal" "pkgs/pi-goal" "del(.devDependencies, .peerDependencies)"
         update_ponytail
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#hunk-review .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal --no-link
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#hunk-review .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal --out-link "$build_roots/packages"
         nix run .#fmt
       '';
     };

@@ -2,12 +2,12 @@
 // unshare -Urn node tests/subagents-host-peers.mjs <pi store path> <pi-subagents store path>
 // Checks the installed resolver and native background child-session factory.
 // The retained Pi server Unix handshake is a separate packaging check, not the
-// pi-subagents 0.70 background transport (which now uses in-process SDK sessions).
+// pi-subagents 0.73 background transport (which uses in-process SDK sessions).
 import assert from "node:assert/strict";
 import { fork, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -27,13 +27,18 @@ const required = [...HOST_PEER_ALIASES,
 assert.deepEqual(Object.keys(resolved.aliases).sort(), required.map(({ specifier }) => specifier).sort());
 const hostVersion = JSON.parse(await readFile(`${root}/package.json`, "utf8")).version;
 const modules = {};
-const serverPeers = [
+// Also import the retained server and the workspaces added to Pi's offline build.
+const packagedPeers = [
+  { specifier: "@earendil-works/pi-codemode", pkg: "@earendil-works/pi-codemode", subpath: "." },
+  { specifier: "@earendil-works/pi-mcp", pkg: "@earendil-works/pi-mcp", subpath: "." },
+  { specifier: "@earendil-works/pi-durable", pkg: "@earendil-works/pi-durable", subpath: "." },
+  { specifier: "@earendil-works/pi-session-backend-sqlite-node", pkg: "@earendil-works/pi-session-backend-sqlite-node", subpath: "." },
   { specifier: "@earendil-works/pi-server", pkg: "@earendil-works/pi-server", subpath: "." },
   { specifier: "@earendil-works/pi-server/unix", pkg: "@earendil-works/pi-server", subpath: "./unix" },
   { specifier: "@earendil-works/pi-client/unix", pkg: "@earendil-works/pi-client", subpath: "./unix" },
   { specifier: "@earendil-works/pi-protocol", pkg: "@earendil-works/pi-protocol", subpath: "." },
 ];
-for (const { specifier, pkg, subpath } of [...required, ...serverPeers]) {
+for (const { specifier, pkg, subpath } of [...required, ...packagedPeers]) {
   const target = await realpath(resolved.aliases[specifier] ?? resolvePackageSubpath(`${root}/node_modules/${pkg}`, subpath));
   assert(target.startsWith(`${core}/`), `${specifier} escaped the host output`);
   if (pkg !== "typebox") {
@@ -113,29 +118,43 @@ if (childSocket) {
     JITI_ALIAS: JSON.stringify(resolved.aliases),
     PI_ASYNC_NATIVE_RUNNER: "1",
   };
-  // Reach the real entrypoint's config-read boundary without scheduling a task.
-  // Without aliases the same runner must fail earlier, while importing host peers.
-  const missingConfig = join(process.cwd(), `missing-runner-config-${randomUUID()}.json`);
-  const runnerArgs = [...execArgv, `${subagents}/src/runs/background/subagent-runner.js`, missingConfig];
-  for (const aliasesPresent of [true, false]) {
-    const probe = spawnSync(process.execPath, runnerArgs, {
-      env: aliasesPresent ? env : { ...env, JITI_ALIAS: "{}" },
-      encoding: "utf8", timeout: 10_000,
-    });
-    assert.ifError(probe.error);
-    assert.equal(probe.signal, null);
-    assert.equal(probe.status, 1, probe.stderr);
-    if (aliasesPresent) {
-      assert.match(probe.stderr, /Subagent runner error:.*ENOENT/);
-      assert(probe.stderr.includes(missingConfig), probe.stderr);
-      assert(!probe.stderr.includes("ERR_MODULE_NOT_FOUND"), probe.stderr);
-    } else {
-      assert.match(probe.stderr, /ERR_MODULE_NOT_FOUND/);
-      assert.match(probe.stderr, /Cannot find package '@earendil-works\/pi-[^']+'/);
-      assert(!probe.stderr.includes("Subagent runner error:"), probe.stderr);
+  // 0.73's production bootstrap reads config before importing the heavy runner.
+  // A regular file as asyncDir fails at its initial mkdir, after the DEFAULT
+  // heavy import/factory setup but before scheduling or creating a child session.
+  assert.equal(env.PI_SUBAGENTS_TEST_RUNNER_EXECUTION_MODULE, undefined);
+  const asyncDir = join(process.cwd(), `runner-storage-file-${randomUUID()}`);
+  await writeFile(asyncDir, "inert packaging fixture");
+  const config = {
+    id: "packaging-probe", cwd: process.cwd(), asyncDir,
+    resultPath: join(process.cwd(), "unused-result.json"), placeholder: "",
+    steps: [{ agent: "never-dispatched", task: "", inheritProjectContext: false,
+      inheritGlobalContext: false, inheritSkills: false }],
+  };
+  const runnerArgs = [...execArgv, `${subagents}/src/runs/background/subagent-runner-bootstrap.js`];
+  try {
+    for (const aliasesPresent of [true, false]) {
+      const probe = spawnSync(process.execPath, runnerArgs, {
+        env: aliasesPresent ? env : { ...env, JITI_ALIAS: "{}" },
+        input: JSON.stringify(config), encoding: "utf8", timeout: 10_000,
+      });
+      assert.ifError(probe.error);
+      assert.equal(probe.signal, null);
+      assert.equal(probe.status, 1, probe.stderr);
+      if (aliasesPresent) {
+        assert.match(probe.stderr, /Subagent runner error:.*EEXIST.*mkdir/);
+        assert(probe.stderr.includes(asyncDir), probe.stderr);
+        assert.match(probe.stderr, /at runSubagent/);
+        assert(!probe.stderr.includes("ERR_MODULE_NOT_FOUND"), probe.stderr);
+      } else {
+        assert.match(probe.stderr, /ERR_MODULE_NOT_FOUND/);
+        assert.match(probe.stderr, /Cannot find package '@earendil-works\/pi-[^']+'/);
+        assert(!probe.stderr.includes("at runSubagent"), probe.stderr);
+      }
     }
+  } finally {
+    await rm(asyncDir);
   }
-  console.log("PASS: installed runner imports/startup reached config read with host aliases; absent-alias negative control failed at peer import");
+  console.log("PASS: production bootstrap/default heavy import reached pre-dispatch storage setup; absent-alias control failed at peer import; no task");
 
   // Upstream's in-memory test host: transport/hello only, no sessions or model calls.
   const directory = await mkdtemp("/tmp/pi-peer-");

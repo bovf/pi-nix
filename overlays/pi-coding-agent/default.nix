@@ -1,20 +1,20 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.86.1";
+    version = "0.99.1";
 
     src = prev.fetchurl {
       url = "https://github.com/earendil-works/pi/archive/refs/tags/v${finalAttrs.version}.tar.gz";
-      hash = "sha256-FtZc5Tv6sa4k1iVTjUNMNBxHidNLNS2MbvaZzx0dVn0=";
+      hash = "sha256-8s1im3Z45rKIDPHKiqPPO63JpAib9Ovb16uLg6oGU+s=";
     };
 
-    npmDepsHash = "sha256-VxjYw4lN/w0sDboihHAKEhdJFzJa09qZo7vavkTkBuw=";
+    npmDepsHash = "sha256-eKtv1fN7X4ukuYbsj7hduGZ3W2FdmO/fAnoaWJp7MQQ=";
     npmWorkspace = "packages/coding-agent";
 
     # Git tags omit generated model data; use the matching published catalog offline.
     modelData = prev.fetchurl {
       url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${finalAttrs.version}.tgz";
-      hash = "sha512-1XHhI6D/fyQdsBieHC/E/4zGKVOoGe4yDyX67VXvzoYkFsX/qE7NpZE7E1RC8e6Bz8B9oG/P+MQFXikv2/BGEg==";
+      hash = "sha512-4nV9JKc94iPX8bwdGPc2nTuVPKIPsffhnp3WoN9NYCNqbtoOF8LhYcIs/+Sn/alroqJK/5QRu6/Z6Ck+n0hyBA==";
     };
     postPatch = ''
       tar -xzf ${finalAttrs.modelData} --strip-components=3 -C packages/ai/src/providers package/dist/providers/data
@@ -28,15 +28,7 @@
     buildPhase = ''
       runHook preBuild
 
-      npm run build --workspace=packages/chord
-      npx tsgo -p packages/tui/tsconfig.build.json
-      npx tsgo -p packages/telemetry/tsconfig.build.json
-      npm run build:offline --workspace=packages/ai
-      npx tsgo -p packages/agent/tsconfig.build.json
-      npx tsgo -p packages/protocol/tsconfig.build.json
-      npx tsgo -p packages/client/tsconfig.build.json
-      npx tsgo -p packages/server/tsconfig.build.json
-      npm run build --workspace=packages/coding-agent
+      npm run build:offline
 
       runHook postBuild
     '';
@@ -48,7 +40,11 @@
         for ws in @earendil-works/chord:packages/chord \
                   @earendil-works/pi-telemetry:packages/telemetry \
                   @earendil-works/pi-ai:packages/ai \
+                  @earendil-works/pi-codemode:packages/codemode \
+                  @earendil-works/pi-mcp:packages/mcp \
+                  @earendil-works/pi-durable:packages/durable \
                   @earendil-works/pi-agent-core:packages/agent \
+                  @earendil-works/pi-session-backend-sqlite-node:packages/session-backends/sqlite-node \
                   @earendil-works/pi-protocol:packages/protocol \
                   @earendil-works/pi-client:packages/client \
                   @earendil-works/pi-server:packages/server \
