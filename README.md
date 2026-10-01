@@ -47,9 +47,9 @@ covers npm releases published before GitHub release assets are available.
 The upstream `build:offline` script builds the matching workspaces with TypeScript
 7, including the new codemode, MCP, durable and SQLite session backend packages.
 These and `pi-server` (including `pi-server/unix`) are installed alongside the
-other host peers. `pi-subagents` 0.73 uses native SDK sessions inside its detached
+other host peers. `pi-subagents` 0.74 uses native SDK sessions inside its detached
 runner, not the older Unix-server transport or an extension-local Pi fallback;
-all required peers must resolve to host Pi 0.99.1.
+all required peers must resolve to host Pi 0.99.2.
 Extensions are built Nix-natively from npm tarballs, managed lockfiles, or pinned
 GitHub sources; no runtime/global npm installation is needed.
 
@@ -160,83 +160,114 @@ remove that directory when the outputs are no longer needed.
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Checked pins (2026-09-30)
+### Checked pins (2026-10-01)
 
-| Package | Version |
+| Package | Previous → current |
 | --- | --- |
-| pi-coding-agent | 0.99.1 |
+| pi-coding-agent | 0.99.1 → 0.99.2 |
 | pi-vim | 0.14.2 (unchanged) |
-| hunk-review (Hunk) | 0.22.0 (unchanged version; upstream HEAD refreshed) |
-| rpiv-todo | 2.11.0 |
-| pi-archimedes (and all 11 component packages) | 2.8.0 |
-| pi-subagents | 0.73.1 |
-| remote-pi | 0.7.0 (unchanged; nested lock refreshed) |
-| plannotator-pi-extension | 0.27.22 |
+| hunk-review (Hunk) | 0.22.0 → 0.23.0 |
+| rpiv-todo | 2.11.0 → 2.12.0 |
+| pi-archimedes | 2.8.0 → 2.9.0 (12 exact component pins audited) |
+| pi-subagents | 0.73.1 → 0.74.0 |
+| remote-pi | 0.7.0 (unchanged; host-peer packaging repaired) |
+| plannotator-pi-extension | 0.27.22 → 0.27.24 |
 | ponytail | 4.10.0 (unchanged) |
-| pi-wait-what | 0.13.1 (unchanged; regenerated lock identical) |
-| pi-lsp | 0.49.8 (unchanged; regenerated lock identical) |
-| pi-chrome-devtools | 0.53.4 (unchanged; regenerated lock identical) |
-| pi-btw | 0.61.1 |
-| pi-goal | 0.54.8 (unchanged; regenerated lock identical) |
+| pi-wait-what | 0.13.1 (unchanged) |
+| pi-lsp | 0.49.8 (unchanged) |
+| pi-chrome-devtools | 0.53.4 (unchanged) |
+| pi-btw | 0.61.1 (unchanged) |
+| pi-goal | 0.54.8 (unchanged) |
 
-Regression checks: `python3 tests/update.py` (bash/jq required) exercises the
-updater offline. `tests/load-extensions.mjs` uses Pi's resource loader; run with
-Node from an empty HOME/cwd under `unshare -Urn` on Linux, passing the Pi store
-path then extension package store paths. This checks factories/resources only,
-not model calls, session lifecycle, browsers, LSP servers or remote services.
-The standalone Node loader reports pi-subagents' host-detection warning and
-keeps its tool eagerly available; it does not verify dynamic-tool host behavior.
-Extension warnings are emitted separately from errors and resource diagnostics.
-Pi warns that remote-pi declares Pi core/TUI and typebox as dependencies, and
-rpiv-todo declares typebox likewise, rather than wildcard host peers. Their local
-copies are retained under upstream constraints: remote-pi has Pi 0.79.10, and both
-have typebox 1.3.34 (host: Pi 0.99.1/typebox 1.3.27). No active host-alias bypass was
-demonstrated; plain native resolution to these copies is not proof of one.
-These checks use the unbundled SDK, not the CLI bundle's embedded-module loader.
-CLI version/help checks do not establish bundled extension-loading coverage.
+All ten managed locks were regenerated; the five `@narumitw` locks are identical.
+All six final flake pins were checked against their declared upstream refs.
+Only Hunk moved, to `aa23ba29ae233a480b1b3c2c20c1c25018246ee6`; nixpkgs and the
+four transitive Hunk pins are unchanged. Hunk still uses
+`stdenv.hostPlatform.isLinux`, without consumer warning suppression.
+Pi's npm latest and GitHub latest release both report 0.99.2; the build uses the
+matching tag/workspace lock and integrity-pinned npm model catalog, not a
+substitute release asset.
 
-`tests/subagents-host-peers.mjs` additionally runs the installed pi-subagents
-host-peer resolver and checks every required alias (13 in this release, including
-Chord), plus the four newly packaged workspaces, against the matching Pi output.
-It launches the installed `subagent-runner-bootstrap.js` with its native
-`runner-peer-preload.mjs`, `JITI_ALIAS`, host package roots and
-`PI_ASYNC_NATIVE_RUNNER=1`. Version 0.73 reads config before importing its heavy
-runner: a missing-config probe alone no longer proves peer loading. Instead,
-an inert config points `asyncDir` at a regular fixture file, reaching the default
-heavy-module import and failing at initial storage setup before task dispatch.
-An absent-alias negative control fails earlier at a host-peer import. A child process using the same preload/environment
-verifies all bare peer imports resolve to the host, calls the default background
-SDK session factory without a loader override, verifies startup/shutdown hooks,
-and disposes an in-memory session without prompting or calling a model.
-Separately, it checks the retained Pi server/client/protocol APIs with upstream's
-in-memory test host and a Unix handshake. That handshake is not pi-subagents'
-current transport.
-This does not exercise the detached runner's full scheduling/steering/task loop
-or remote placement. Run with Node 24 from an empty HOME/cwd, for example:
+### Host peers and regression checks
+
+`remote-pi` 0.7.0 still declares Pi core/TUI and typebox as private dependencies
+upstream. `pkgs/remote-pi/host-peers.jq` normalizes only these three packages to
+wildcard peers, shared by the updater and build. Its managed lock contains no
+private host copies. The output links the exact host modules for its native ESM
+and standalone CLI consumers, which cannot rely on Pi's extension aliases.
+`rpiv-todo` 2.12.0 fixes its typebox peer upstream; no local patch is needed.
+Other package constraints remain unchanged.
+
+- `python3 tests/update.py` (bash/jq required) checks the updater offline,
+  including shared peer normalization and the copy-free remote-pi lock.
+- `tests/remote-pi-host-peers.mjs` checks native ESM realpath/module identity,
+  both standalone CLI import/help paths, and negative controls for the old
+  manifest warning and a manifest-only repair retaining conflicting copies.
+  Use Node's `--experimental-import-meta-resolve` flag for this test's explicit
+  parent-URL resolution; CJS `require.resolve` does not support these ESM-only
+  exports.
+- `tests/load-extensions.mjs` checks every packaged factory/resource and rejects
+  all host-peer warnings. All 13 selections and their combined load passed
+  (12 factories, 10 skills, 6 templates), with empty stderr. Subagents 0.74 also
+  fixes the previous standalone-SDK host-detection warning upstream.
+- `tests/subagents-host-peers.mjs` exercises the installed native preload,
+  `JITI_ALIAS`, real `subagent-runner-bootstrap.js` heavy import, and absent-alias
+  negative control. Its uninjected background SDK factory creates/disposes an
+  in-memory session with startup/shutdown hooks, without prompting. All 13
+  current aliases resolve to Pi 0.99.2. The matching server/client `/unix`
+  handshake is tested separately, not misidentified as subagents' transport.
+- `tests/bundled-cli.mjs` runs the actual installed `bin/pi` (the bundled Node
+  entrypoint), loads packaged extensions, checks RPC startup/EOF shutdown and
+  resource commands, and rejects stderr/warnings/errors. It never sends a
+  prompt. Archimedes 2.9 removed its MCP component upstream; the inert fixture
+  retains `archimedes.mcp.enabled=false` and checks exactly one builtin `/mcp`.
+  Clipboard-image/delegation exclusions remain intact. For an already generated
+  isolated Home Manager fixture, pass `<core> --existing-settings` instead of
+  package paths. This retains its package selection, extensions and preferences,
+  appends only the inert probe, rejects settings mutation and restores the original
+  settings bytes. Never point it at a live home.
+
+Run runtime checks only in an empty, private filesystem **and** network
+namespace. An empty HOME or `unshare -Urn` alone does not isolate absolute home
+paths and host Unix sockets. Inspect startup hooks and installed wrappers when
+upgrading; never reuse live settings/auth. For example, on Linux:
 
 ```bash
 export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 2\ncores = 4'
 roots=$(mktemp -d)
-core=$(nix build .#pi-coding-agent --out-link "$roots/core" --print-out-paths)
-subagents=$(nix build .#pi-subagents --out-link "$roots/subagents" --print-out-paths)
-test="$PWD/tests/subagents-host-peers.mjs"
-node=$(command -v node)
-home=$(mktemp -d)
-(cd "$home" && env -i HOME="$home" PATH="$PATH" PI_OFFLINE=1 \
-  timeout 60 unshare -Urn "$node" "$test" "$core" "$subagents")
-rm -rf "$home"
+nix build .#pi-coding-agent --out-link "$roots/core"
+nix build .#remote-pi --out-link "$roots/remote"
+nix build .#rpiv-todo --out-link "$roots/todo"
+nix build --inputs-from . nixpkgs#nodejs --out-link "$roots/node"
+nix build --inputs-from . nixpkgs#bubblewrap --out-link "$roots/bwrap"
+node="$(readlink -f "$roots/node")/bin/node"
+core=$(readlink -f "$roots/core")
+remote=$(readlink -f "$roots/remote")
+todo=$(readlink -f "$roots/todo")
+fixture=$(mktemp -d)
+"$roots/bwrap/bin/bwrap" --unshare-all --die-with-parent --new-session \
+  --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /tmp \
+  --bind "$fixture" /fixture --ro-bind "$PWD/tests" /tests --chdir /fixture \
+  --clearenv --setenv HOME /fixture --setenv PATH "$(dirname "$node")" \
+  --setenv PI_OFFLINE 1 "$node" --experimental-import-meta-resolve \
+  /tests/remote-pi-host-peers.mjs "$core" "$remote" "$todo"
+rm -rf "$fixture"
 ```
 
-All outputs below were built on `x86_64-linux`; `pi --version` returned `0.99.1`.
-Every packaged extension/Hunk resource loaded individually and together in an
-empty HOME/cwd with networking disabled (12 extension factories, 11 skills and
-6 prompt templates; no resource diagnostics). Local search usage and the MCP
-initialize/list-tools/empty-query path passed offline. Its nixpkgs-supplied ddgr
-2.2, Python 3.14.7 and MCP 1.29.0 versions are unchanged, with refreshed derivations.
-All package derivations also evaluated on `aarch64-linux` and `aarch64-darwin`
-(not cross-built). Hunk upstream HEAD `0a67560cfd4f4ad2a01251018c4caa538a1f107a`
-uses `stdenv.hostPlatform.isLinux` in `nix/package.nix:38`, fixing the historical
-`stdenv.isLinux` warning upstream; no consumer suppression is applied.
+Use a fresh fixture with the same sandbox for `load-extensions.mjs` or
+`bundled-cli.mjs`, passing the core then the desired package store paths;
+`subagents-host-peers.mjs` takes core and subagents. Only the native peer test
+needs the experimental resolver flag. Keep build roots until validation ends.
+
+All 16 native outputs were realized on `x86_64-linux`. Local search usage and
+MCP initialize/list-tools/empty-query checks passed without a web query; their
+nixpkgs dependencies remain ddgr 2.2, Python 3.14.7 and MCP 1.29.0.
+All derivations also evaluated on `aarch64-linux` and `aarch64-darwin`, without
+cross-build claims. `nix flake check --no-build --all-systems` evaluates the
+flake; it is not an additional realization (and retains the existing six app
+`meta` warnings). Independent redacted Gitleaks and offline TruffleHog passed.
+These gates do not cover full TUI workflows, model/provider calls, browser/LSP
+services, remote placement, daemon fleet operations or hardware.
 
 Downstream consumers must refresh their followed nixpkgs and Hunk inputs plus
 the four transitive Hunk paths above, not just the pi-nix revision. Preserve

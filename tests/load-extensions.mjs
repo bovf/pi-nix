@@ -34,6 +34,7 @@ console.log(JSON.stringify({
   themeDiagnostics: loader.getThemes().diagnostics,
 }, null, 2));
 assert.deepEqual(errors, []);
+assert.deepEqual(warnings, [], "host-peer package warnings are packaging failures");
 assert.deepEqual(loader.getSkills().diagnostics, []);
 assert.deepEqual(loader.getPrompts().diagnostics, []);
 assert.deepEqual(loader.getThemes().diagnostics, []);

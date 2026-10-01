@@ -184,15 +184,15 @@ in {
 
   pi-archimedes = prev.buildNpmPackage rec {
     pname = "pi-archimedes";
-    version = "2.8.0";
+    version = "2.9.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
-      hash = "sha512-7S2eGa51JJDdypLsgDM4ugE3J7vBC2neztYOvLkY+Qj7MkXLaDx5s4H98vrFgmt0UiOggejDORFV/rQEsmxxuA==";
+      hash = "sha512-WQqyBC0XGCRF7t7yBu96CSGOF5RkCdkrTF6AxYiVNF71A1cAofrqSZ+4SytIPP1ImRremtInusnj/IB+7nAJ/w==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-mbMXxo028MY14laOub2QuFCpGNSsKyFFS8r5VXy//aE=";
+    npmDepsHash = "sha256-cFROing/wspQzJbiXKtUcYjNupVwXqr0/0U+vYawRqg=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -225,15 +225,15 @@ in {
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";
-    version = "2.11.0";
+    version = "2.12.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@juicesharp/rpiv-todo/-/rpiv-todo-${version}.tgz";
-      hash = "sha512-MNWG3xRMKrA4qgL3O1F4WiuY9+3NAWem+5Ac0NDHqYTGjikGRf6b4SdL9bw+RdEOEj2BUaKFSeTbP8vLZw5CDQ==";
+      hash = "sha512-bTILerGqMGrWMUkahHzXTuYa4iPkRX/LTl12HPppcCdPg7pGwrC1K7/ZtPfp7Xi4cXzqEoyZpeUM6IA8y5gtEQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-klkl/dG8ygctSkzdJm/1oJ4HTFPtys31KuevY276AoA=";
+    npmDepsHash = "sha256-iUVVn1V/IDeAPQ4GkaXnWG0iUL95kHxu+BeaGg6Q7+A=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
@@ -260,15 +260,15 @@ in {
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.27.22";
+    version = "0.27.24";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-9ctdYu5WuolWtvoIgwpvKGEiVyLRVhHi9CSMKRsPMi6M5vnCW/GaejCuTq5X/peysSZBufsWwSVySFQ+ycEdZQ==";
+      hash = "sha512-iH3t6F1Y35FZ5rbotBXKe7QZXf8yhj9e19gtTRA0Rea1voObxXmaaSWuH0gt3H/pbmpl9TF+lFqYrgaBvZv/Kw==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-BSlXLteFquhHR9195YeYTAyX/t4TQr6P1M/Hj/TRDdI=";
+    npmDepsHash = "sha256-JYBneOiVwuNltc8b3XewT0J3YZiqHpIj3AO+Xj7NwGU=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -296,15 +296,15 @@ in {
 
   pi-subagents = prev.buildNpmPackage rec {
     pname = "pi-subagents";
-    version = "0.73.1";
+    version = "0.74.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-subagents/-/pi-subagents-${version}.tgz";
-      hash = "sha512-IklOqw67DtvIWQFKxFJpDFXsOGcq8RGYZEbokykD5Kvfs9aa/du1cW2NEJ5xx4GUgN2LVt3vAq5IdzEMo7YwJw==";
+      hash = "sha512-7+67TCpQuYoW2kMu4Kmt4j90hiR8uX8ozg3F/eakApUU6PxK7NteO58ylOWPql7fh/uTIEfS00FT2LKVDTSicw==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-3QM1aPdALyTyH9YtNw1nJdyY+c9/v714tqrw4G73rpI=";
+    npmDepsHash = "sha256-0J6C32D3hjWEjgmh9FTZBT64Pz3NllZ767tHiVKt9Fk=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -340,7 +340,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-QkQZgh67ZCurLEWxcqRswrUTGkoG5IS1M992oUr92xY=";
+    npmDepsHash = "sha256-JnJJwIsnhVMlBYL1zyXkmiVERatDdIOqX2wbi4FyRh0=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -348,8 +348,8 @@ in {
     npm_config_legacy_peer_deps = "true";
 
     postPatch = ''
-      cp package.json package.json.upstream
-      ${prev.jq}/bin/jq 'del(.devDependencies)' package.json > package.json.nix
+      ${prev.jq}/bin/jq -f ${../../pkgs/remote-pi/host-peers.jq} package.json > package.json.upstream
+      ${prev.jq}/bin/jq 'del(.devDependencies)' package.json.upstream > package.json.nix
       mv package.json.nix package.json
       cp ${../../pkgs/remote-pi/package-lock.json} package-lock.json
     '';
@@ -360,6 +360,13 @@ in {
       rm package-lock.json
       mkdir -p $out
       cp -r . $out/
+      # Standalone CLI/native ESM consumers cannot use Pi's extension aliases.
+      # Link the same host modules, never private npm copies of the peers.
+      host=${final.pi-coding-agent}/lib/node_modules/pi-monorepo
+      mkdir -p $out/node_modules/@earendil-works
+      ln -s "$host" $out/node_modules/@earendil-works/pi-coding-agent
+      ln -s "$host/node_modules/@earendil-works/pi-tui" $out/node_modules/@earendil-works/pi-tui
+      ln -s "$host/node_modules/typebox" $out/node_modules/typebox
       runHook postInstall
     '';
 

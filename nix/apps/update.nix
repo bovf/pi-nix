@@ -236,7 +236,7 @@
         update_pi_package "rpiv-todo" "@juicesharp/rpiv-todo" "pkgs/rpiv-todo"
         update_pi_package "pi-archimedes" "pi-archimedes" "pkgs/pi-archimedes"
         update_pi_package "pi-subagents" "pi-subagents" "pkgs/pi-subagents"
-        update_pi_package "remote-pi" "remote-pi" "pkgs/remote-pi" "del(.devDependencies)"
+        update_pi_package "remote-pi" "remote-pi" "pkgs/remote-pi" "$(cat pkgs/remote-pi/host-peers.jq) | del(.devDependencies)"
         update_pi_package "plannotator-pi-extension" "@plannotator/pi-extension" "pkgs/pi-extension"
         update_pi_package "pi-wait-what" "@narumitw/pi-wait-what" "pkgs/pi-wait-what" "del(.devDependencies, .peerDependencies)"
         update_pi_package "pi-lsp" "@narumitw/pi-lsp" "pkgs/pi-lsp" "del(.devDependencies, .peerDependencies)"

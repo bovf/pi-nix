@@ -90,4 +90,19 @@ subprocess.run(["bash", "-euc", '''
       fi
     done
 '''], check=True)
-print("PASS: npm-latest core/tag/model pins; fresh locks; rooted builds; stable public release redirect with invalid targets rejected")
+# The updater and installed package share this exact normalization. Preserve all
+# unrelated constraints and metadata, including standalone binaries.
+peers = ["@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"]
+manifest = {"dependencies": {**dict.fromkeys(peers, "^0.1.0"), "ws": "^8.21.0"},
+            "peerDependencies": {"other": "^2"}, "bin": {"remote-pi": "dist/index.js"}}
+normalized = json.loads(subprocess.check_output(
+    ["jq", "-f", str(ROOT / "pkgs/remote-pi/host-peers.jq")],
+    input=json.dumps(manifest), text=True))
+assert normalized == {**manifest, "dependencies": {"ws": "^8.21.0"},
+                      "peerDependencies": {"other": "^2", **dict.fromkeys(peers, "*")}}
+assert '$(cat pkgs/remote-pi/host-peers.jq) | del(.devDependencies)' in updater
+lock = json.loads((ROOT / "pkgs/remote-pi/package-lock.json").read_text())
+assert all(lock["packages"][""]["peerDependencies"][peer] == "*" for peer in peers)
+assert not any(key.endswith("node_modules/" + peer)
+               for key in lock["packages"] for peer in peers)
+print("PASS: npm-latest core/tag/model pins; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock")
