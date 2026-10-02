@@ -1,20 +1,20 @@
 {...}: final: prev: {
   pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
     pname = "pi-coding-agent";
-    version = "0.99.2";
+    version = "1.0.0";
 
     src = prev.fetchurl {
       url = "https://github.com/earendil-works/pi/archive/refs/tags/v${finalAttrs.version}.tar.gz";
-      hash = "sha256-4yoWwWsM28phRS225YQDC55Z/Bsqop4gOpPthbVJC+g=";
+      hash = "sha256-9oYOZ1JNJK2fhR/g0ZsYTvgcfS598b85xlc2Vb0ROYw=";
     };
 
-    npmDepsHash = "sha256-eKghIpCAKawZm0Uf2iG6y1fz21Z5jNnMiAFJ5Quj3GI=";
+    npmDepsHash = "sha256-ndEvWdB6sa5nNNtabk2OMZKUFG9x3op185deZHxFnXk=";
     npmWorkspace = "packages/coding-agent";
 
     # Git tags omit generated model data; use the matching published catalog offline.
     modelData = prev.fetchurl {
       url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${finalAttrs.version}.tgz";
-      hash = "sha512-9RFOEdY+ZTJ1AI+UuAFs4RM0tF2Tje/R/CEv9gWTJHt0iTu8XHZs64U/EIZxNSllFmec/4HfwsOxYj1qQek9bg==";
+      hash = "sha512-3/W1vdDaVtpeMd23ElvJC12HLA5yS/BGqqcXF+0SK082dN7cbgNcCwguTBRBC258Ke8SzSvUW1B75iAf8w8IxA==";
     };
     postPatch = ''
       tar -xzf ${finalAttrs.modelData} --strip-components=3 -C packages/ai/src/providers package/dist/providers/data
@@ -44,7 +44,6 @@
                   @earendil-works/pi-mcp:packages/mcp \
                   @earendil-works/pi-durable:packages/durable \
                   @earendil-works/pi-agent-core:packages/agent \
-                  @earendil-works/pi-session-backend-sqlite-node:packages/session-backends/sqlite-node \
                   @earendil-works/pi-protocol:packages/protocol \
                   @earendil-works/pi-client:packages/client \
                   @earendil-works/pi-server:packages/server \

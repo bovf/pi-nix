@@ -45,11 +45,12 @@ generated model data, so the matching, integrity-pinned `@earendil-works/pi-ai`
 npm catalog is copied in and validated by upstream's offline build. This also
 covers npm releases published before GitHub release assets are available.
 The upstream `build:offline` script builds the matching workspaces with TypeScript
-7, including the new codemode, MCP, durable and SQLite session backend packages.
-These and `pi-server` (including `pi-server/unix`) are installed alongside the
-other host peers. `pi-subagents` 0.74 uses native SDK sessions inside its detached
-runner, not the older Unix-server transport or an extension-local Pi fallback;
-all required peers must resolve to host Pi 0.99.2.
+7, including codemode, MCP and durable packages. Pi 1.0 removed the separate
+SQLite session-backend workspace; no obsolete backend is installed or substituted.
+The current workspaces and `pi-server` (including `pi-server/unix`) are installed
+alongside the other host peers. `pi-subagents` 0.74 uses native SDK sessions inside
+its detached runner, not the older Unix-server transport or an extension-local Pi fallback;
+all current required peers must resolve to host Pi 1.0.0.
 Extensions are built Nix-natively from npm tarballs, managed lockfiles, or pinned
 GitHub sources; no runtime/global npm installation is needed.
 
@@ -160,33 +161,40 @@ remove that directory when the outputs are no longer needed.
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Checked pins (2026-10-01)
+### Checked pins (2026-10-02)
 
 | Package | Previous → current |
 | --- | --- |
-| pi-coding-agent | 0.99.1 → 0.99.2 |
+| pi-coding-agent | 0.99.2 → 1.0.0 |
 | pi-vim | 0.14.2 (unchanged) |
-| hunk-review (Hunk) | 0.22.0 → 0.23.0 |
-| rpiv-todo | 2.11.0 → 2.12.0 |
-| pi-archimedes | 2.8.0 → 2.9.0 (12 exact component pins audited) |
-| pi-subagents | 0.73.1 → 0.74.0 |
-| remote-pi | 0.7.0 (unchanged; host-peer packaging repaired) |
-| plannotator-pi-extension | 0.27.22 → 0.27.24 |
-| ponytail | 4.10.0 (unchanged) |
+| hunk-review (Hunk) | 0.23.0 (unchanged version; source refreshed) |
+| rpiv-todo | 2.12.0 (unchanged) |
+| pi-archimedes | 2.9.0 (unchanged; 12 exact component pins audited) |
+| pi-subagents | 0.74.0 (unchanged; Pi 1.0 resolver compatibility patch) |
+| remote-pi | 0.7.0 (unchanged; dependency lock refreshed) |
+| plannotator-pi-extension | 0.27.24 → 0.27.25 |
+| ponytail | 4.10.0 → 4.10.1 |
 | pi-wait-what | 0.13.1 (unchanged) |
-| pi-lsp | 0.49.8 (unchanged) |
+| pi-lsp | 0.49.8 → 0.49.9 |
 | pi-chrome-devtools | 0.53.4 (unchanged) |
 | pi-btw | 0.61.1 (unchanged) |
 | pi-goal | 0.54.8 (unchanged) |
 
-All ten managed locks were regenerated; the five `@narumitw` locks are identical.
+All ten managed locks were regenerated; seven are identical. Plannotator, LSP
+and remote-pi changed; all filtered root constraints and 395 unique resolved
+npm dependency versions/tarballs/integrities were checked against registry metadata.
 All six final flake pins were checked against their declared upstream refs.
-Only Hunk moved, to `aa23ba29ae233a480b1b3c2c20c1c25018246ee6`; nixpkgs and the
-four transitive Hunk pins are unchanged. Hunk still uses
+Nixpkgs moved to `c9fe7d12cd78d1adcd12dd15e24432dde5b155a0`, Hunk to
+`f4beb1650c7cab6ca8accc171383d2110f80f71c`, and Hunk's flake-parts to
+`024633cd702b10285db5cb19b40ad48d2399ba60`; the other three transitive pins
+are unchanged. The final graph retains the four audited Hunk paths above and
+all existing follows, with no additional unfollowed sources. The initial root
+refresh briefly introduced bun2nix's import-tree and separate nixpkgs-lib pins;
+the existing transitive refresh removed them. Hunk still uses
 `stdenv.hostPlatform.isLinux`, without consumer warning suppression.
-Pi's npm latest and GitHub latest release both report 0.99.2; the build uses the
-matching tag/workspace lock and integrity-pinned npm model catalog, not a
-substitute release asset.
+Pi's npm latest and GitHub latest release both report 1.0.0; the build uses tag
+`v1.0.0` (`a13d35a742c6ef8462812a28fbe1d8c8b7431c32`), its workspace lock and
+integrity-pinned matching npm model catalog, not a substitute release asset.
 
 ### Host peers and regression checks
 
@@ -198,8 +206,15 @@ and standalone CLI consumers, which cannot rely on Pi's extension aliases.
 `rpiv-todo` 2.12.0 fixes its typebox peer upstream; no local patch is needed.
 Other package constraints remain unchanged.
 
-- `python3 tests/update.py` (bash/jq required) checks the updater offline,
-  including shared peer normalization and the copy-free remote-pi lock.
+Pi 1.0 also removed `pi-agent-core/node`. Subagents 0.74 lists this unused
+export only in its runner alias inventory, not in runtime imports. The overlay
+strictly deletes that one declaration only for subagents 0.74.0 with Pi >=1.0;
+older hosts retain it. Remove this patch when upstream corrects the inventory.
+No missing-peer filtering or substitute module is used.
+
+- `python3 tests/update.py` (bash/jq/nix required) checks the updater offline,
+  including shared peer normalization, the copy-free remote-pi lock and the
+  owning Nix alias patch's old/new-host guard.
 - `tests/remote-pi-host-peers.mjs` checks native ESM realpath/module identity,
   both standalone CLI import/help paths, and negative controls for the old
   manifest warning and a manifest-only repair retaining conflicting copies.
@@ -212,15 +227,18 @@ Other package constraints remain unchanged.
   fixes the previous standalone-SDK host-detection warning upstream.
 - `tests/subagents-host-peers.mjs` exercises the installed native preload,
   `JITI_ALIAS`, real `subagent-runner-bootstrap.js` heavy import, and absent-alias
-  negative control. Its uninjected background SDK factory creates/disposes an
-  in-memory session with startup/shutdown hooks, without prompting. All 13
-  current aliases resolve to Pi 0.99.2. The matching server/client `/unix`
+  negative control, plus restoration of the obsolete alias as a failure control.
+  Its uninjected background SDK factory creates/disposes an
+  in-memory session with startup/shutdown hooks, without prompting. All 12
+  current aliases resolve to Pi 1.0.0. The matching server/client `/unix`
   handshake is tested separately, not misidentified as subagents' transport.
 - `tests/bundled-cli.mjs` runs the actual installed `bin/pi` (the bundled Node
   entrypoint), loads packaged extensions, checks RPC startup/EOF shutdown and
   resource commands, and rejects stderr/warnings/errors. It never sends a
   prompt. Archimedes 2.9 removed its MCP component upstream; the inert fixture
-  retains `archimedes.mcp.enabled=false` and checks exactly one builtin `/mcp`.
+  retains `archimedes.mcp.enabled=false`, checks actual component/plugin absence,
+  exercises its remaining session-start lazy handler and checks exactly one
+  builtin `/mcp`.
   Clipboard-image/delegation exclusions remain intact. For an already generated
   isolated Home Manager fixture, pass `<core> --existing-settings` instead of
   package paths. This retains its package selection, extensions and preferences,
@@ -262,6 +280,8 @@ needs the experimental resolver flag. Keep build roots until validation ends.
 All 16 native outputs were realized on `x86_64-linux`. Local search usage and
 MCP initialize/list-tools/empty-query checks passed without a web query; their
 nixpkgs dependencies remain ddgr 2.2, Python 3.14.7 and MCP 1.29.0.
+Installed Pi 1.0's MCP name function still maps the `web-search` server and
+`web_search` tool to exactly `mcp__web_search__web_search`.
 All derivations also evaluated on `aarch64-linux` and `aarch64-darwin`, without
 cross-build claims. `nix flake check --no-build --all-systems` evaluates the
 flake; it is not an additional realization (and retains the existing six app

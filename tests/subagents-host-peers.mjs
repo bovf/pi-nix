@@ -1,8 +1,8 @@
-// Run with Node 24 in an empty HOME/cwd and a Linux network namespace:
-// unshare -Urn node tests/subagents-host-peers.mjs <pi store path> <pi-subagents store path>
+// Run with Node 24 in the private filesystem/network sandbox documented in README:
+// node tests/subagents-host-peers.mjs <pi store path> <pi-subagents store path>
 // Checks the installed resolver and native background child-session factory.
 // The retained Pi server Unix handshake is a separate packaging check, not the
-// pi-subagents 0.73 background transport (which uses in-process SDK sessions).
+// pi-subagents background transport (which uses in-process SDK sessions).
 import assert from "node:assert/strict";
 import { fork, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -26,13 +26,27 @@ const required = [...HOST_PEER_ALIASES,
 ];
 assert.deepEqual(Object.keys(resolved.aliases).sort(), required.map(({ specifier }) => specifier).sort());
 const hostVersion = JSON.parse(await readFile(`${root}/package.json`, "utf8")).version;
+if (Number(hostVersion.split(".")[0]) >= 1) {
+  const obsolete = '@earendil-works/pi-agent-core/node';
+  assert(!HOST_PEER_ALIASES.some(({ specifier }) => specifier === obsolete));
+  const fixture = await mkdtemp(join(process.cwd(), "obsolete-alias-"));
+  try {
+    const source = await readFile(`${subagents}/src/runs/background/runner-aliases.js`, "utf8");
+    const declaration = 'export const HOST_PEER_ALIASES = [';
+    assert.equal(source.split(declaration).length, 2);
+    await writeFile(`${fixture}/original.mjs`, source.replace(declaration, `${declaration}\n    { specifier: "${obsolete}", pkg: "@earendil-works/pi-agent-core", subpath: "./node" },`));
+    const original = await import(pathToFileURL(`${fixture}/original.mjs`));
+    assert.deepEqual(original.resolveHostPeerAliases(root).missing, [obsolete], "restoring the obsolete alias must fail on Pi >=1.0");
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+}
 const modules = {};
 // Also import the retained server and the workspaces added to Pi's offline build.
 const packagedPeers = [
   { specifier: "@earendil-works/pi-codemode", pkg: "@earendil-works/pi-codemode", subpath: "." },
   { specifier: "@earendil-works/pi-mcp", pkg: "@earendil-works/pi-mcp", subpath: "." },
   { specifier: "@earendil-works/pi-durable", pkg: "@earendil-works/pi-durable", subpath: "." },
-  { specifier: "@earendil-works/pi-session-backend-sqlite-node", pkg: "@earendil-works/pi-session-backend-sqlite-node", subpath: "." },
   { specifier: "@earendil-works/pi-server", pkg: "@earendil-works/pi-server", subpath: "." },
   { specifier: "@earendil-works/pi-server/unix", pkg: "@earendil-works/pi-server", subpath: "./unix" },
   { specifier: "@earendil-works/pi-client/unix", pkg: "@earendil-works/pi-client", subpath: "./unix" },
@@ -118,7 +132,7 @@ if (childSocket) {
     JITI_ALIAS: JSON.stringify(resolved.aliases),
     PI_ASYNC_NATIVE_RUNNER: "1",
   };
-  // 0.73's production bootstrap reads config before importing the heavy runner.
+  // The production bootstrap reads config before importing the heavy runner.
   // A regular file as asyncDir fails at its initial mkdir, after the DEFAULT
   // heavy import/factory setup but before scheduling or creating a child session.
   assert.equal(env.PI_SUBAGENTS_TEST_RUNNER_EXECUTION_MODULE, undefined);

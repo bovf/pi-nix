@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Offline regression check for npm-latest core pins and fresh extension locks.
 
-Run: python3 tests/update.py (bash and jq on PATH).
+Run: python3 tests/update.py (bash, jq and nix on PATH).
 """
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -105,4 +106,20 @@ lock = json.loads((ROOT / "pkgs/remote-pi/package-lock.json").read_text())
 assert all(lock["packages"][""]["peerDependencies"][peer] == "*" for peer in peers)
 assert not any(key.endswith("node_modules/" + peer)
                for key in lock["packages"] for peer in peers)
-print("PASS: npm-latest core/tag/model pins; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock")
+# Evaluate the owning Nix patch with old/new host versions, without builds or inputs.
+obsolete_alias = '@earendil-works/pi-agent-core/node'
+for host_version, patched in [('0.99.2', False), ('1.0.0', True)]:
+    expression = f'''let
+      overlay = import {ROOT / 'overlays/pi-packages'} {{ hunk = {{}}; }};
+      packages = overlay {{ pi-coding-agent.version = "{host_version}"; }} {{
+        buildNpmPackage = x: x;
+        lib.optionalString = condition: text: if condition then text else "";
+        lib.versionAtLeast = a: b: builtins.compareVersions a b >= 0;
+      }};
+    in packages.pi-subagents.postPatch'''
+    patch = subprocess.check_output(['nix', 'eval', '--offline', '--impure', '--raw', '--expr', expression], text=True,
+        env={**os.environ, 'NIX_CONFIG': os.environ.get('NIX_CONFIG', '') + '\nmax-jobs = 2\ncores = 4'})
+    assert (obsolete_alias in patch) == patched, (host_version, patch)
+    if patched:
+        assert '--replace-fail' in patch
+print("PASS: npm-latest core/tag/model pins; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; exact subagents alias patch only on Pi >=1.0")

@@ -3,7 +3,7 @@
 // isolation is insufficient: extensions can discover absolute paths/Unix sockets.
 // Actual packaged CLI RPC startup/shutdown; no prompts, models or service calls.
 import assert from "node:assert/strict";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { access, readFile, mkdir, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 
 let [core, ...packages] = process.argv.slice(2);
@@ -32,7 +32,8 @@ export default function (pi) {
       reason: event.reason, mode: ctx.mode, tools: pi.getAllTools().map(t => t.name)}) + "\\n");
   });
   pi.on("session_shutdown", event => {
-    appendFileSync(${JSON.stringify(lifecycle)}, JSON.stringify({event: event.type, reason: event.reason}) + "\\n");
+    appendFileSync(${JSON.stringify(lifecycle)}, JSON.stringify({event: event.type, reason: event.reason,
+      tools: pi.getAllTools().map(t => t.name)}) + "\\n");
   });
 }
 `);
@@ -72,4 +73,15 @@ assert.deepEqual(events.map(e => e.event), ["session_start", "session_shutdown"]
 assert.equal(events[0].mode, "rpc");
 assert.equal(events[0].reason, "startup");
 assert.equal(events[1].reason, "quit");
+const archimedes = packages.find(p => p.includes("pi-archimedes"));
+if (archimedes) {
+  const manifest = JSON.parse(await readFile(`${archimedes}/package.json`, "utf8"));
+  assert.equal(manifest.dependencies["@pi-archimedes/mcp"], undefined);
+  await assert.rejects(access(`${archimedes}/node_modules/@pi-archimedes/mcp`), { code: "ENOENT" });
+  assert.doesNotMatch(await readFile(`${archimedes}/src/plugins.ts`, "utf8"), /id:\s*"mcp"/);
+  if (settings["archimedes.web"]?.enabled !== false) {
+    // Explicit extensions load before packages; inspect after all startup handlers ran.
+    assert(events[1].tools.includes("fetch_content"), "Archimedes session_start lazy handler did not register web tools");
+  }
+}
 console.log("PASS: installed bundled CLI loaded packaged extensions, one builtin /mcp, RPC startup/shutdown; no prompt");
