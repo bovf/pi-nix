@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline regression check for npm-latest core pins and fresh extension locks.
+"""Offline regression check for upstream-owned core and fresh extension locks.
 
 Run: python3 tests/update.py (bash, jq and nix on PATH).
 """
@@ -18,32 +18,21 @@ def shell_section(start, end):
     return textwrap.dedent(updater.split(start, 1)[1].split(end, 1)[0]).replace("''${", "${")
 
 
+# Core source, catalog and dependency hashes are owned by the locked upstream flake.
+flake = (ROOT / "flake.nix").read_text()
+core = (ROOT / "overlays/pi-coding-agent/default.nix").read_text()
+assert 'url = "github:earendil-works/pi/stable";' in flake
+assert 'inputs.nixpkgs.follows = "nixpkgs";' in flake.split('pi-upstream = {', 1)[1].split('};', 1)[0]
+assert 'update_pi_core' not in updater
+assert 'nix flake update' in updater
+assert 'prev.callPackage "${pi-upstream}/nix/package.nix"' in core
+assert 'attrs.pname == "pi-workspace-packages"' in core
+assert 'prev.lib.strings.addContextFrom lock' in core
+assert all(field not in core for field in ['npmDepsHash', 'modelData', 'buildNpmPackage'])
+assert 'for workspace in durable protocol client server;' in core
+
 with tempfile.TemporaryDirectory() as directory:
     tmp = Path(directory)
-    overlay = tmp / "overlays/pi-coding-agent/default.nix"
-    overlay.parent.mkdir(parents=True)
-    overlay.write_text((ROOT / "overlays/pi-coding-agent/default.nix").read_text())
-    core = "update_pi_core() {" + shell_section("        update_pi_core() {", "        update_ponytail() {")
-    subprocess.run(["bash", "-euc", '''
-        npm_meta() {
-          case "$1" in
-            '@earendil-works%2fpi-coding-agent') echo '{"dist-tags":{"latest":"9.8.7"}}' ;;
-            '@earendil-works%2fpi-ai/9.8.7') echo '{"dist":{"integrity":"sha512-model"}}' ;;
-            *) return 1 ;;
-          esac
-        }
-        nix() {
-          test "$*" = 'store prefetch-file --json https://github.com/earendil-works/pi/archive/refs/tags/v9.8.7.tar.gz'
-          echo '{"hash":"sha256-source"}'
-        }
-        resolve_build_hash() { :; }
-    ''' + core + "\nupdate_pi_core\n"], cwd=tmp, check=True)
-    result = overlay.read_text()
-    assert 'version = "9.8.7";' in result
-    assert 'hash = "sha256-source";' in result
-    assert 'hash = "sha512-model";' in result
-    assert 'npmDepsHash = prev.lib.fakeHash;' in result
-
     package = tmp / "package"
     package.mkdir()
     (package / "package.json").write_text(json.dumps({"name": "fixture", "version": "1.0.0"}))
@@ -62,7 +51,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert json.loads((package / "package-lock.json").read_text())["lockfileVersion"] == 3
 
     rooted_build = "resolve_build_hash() {" + shell_section(
-        "        resolve_build_hash() {", "        update_pi_core() {")
+        "        resolve_build_hash() {", "        update_ponytail() {")
     subprocess.run(["bash", "-euc", '''
         build_roots="$1"
         nix() { test "$*" = "build .#fixture --out-link $build_roots/fixture"; }
@@ -108,7 +97,7 @@ assert not any(key.endswith("node_modules/" + peer)
                for key in lock["packages"] for peer in peers)
 # Evaluate the owning Nix patch with old/new host versions, without builds or inputs.
 obsolete_alias = '@earendil-works/pi-agent-core/node'
-for host_version, patched in [('0.99.2', False), ('1.0.0', True)]:
+for host_version, patched in [('0.99.2', False), ('1.0.0', True), ('1.0.2', True)]:
     expression = f'''let
       overlay = import {ROOT / 'overlays/pi-packages'} {{ hunk = {{}}; }};
       packages = overlay {{ pi-coding-agent.version = "{host_version}"; }} {{
@@ -122,4 +111,4 @@ for host_version, patched in [('0.99.2', False), ('1.0.0', True)]:
     assert (obsolete_alias in patch) == patched, (host_version, patch)
     if patched:
         assert '--replace-fail' in patch
-print("PASS: npm-latest core/tag/model pins; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; exact subagents alias patch only on Pi >=1.0")
+print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; exact subagents alias patch only on Pi >=1.0")

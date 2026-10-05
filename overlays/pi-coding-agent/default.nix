@@ -1,97 +1,48 @@
-{...}: final: prev: {
-  pi-coding-agent = prev.buildNpmPackage (finalAttrs: {
-    pname = "pi-coding-agent";
-    version = "1.0.0";
-
-    src = prev.fetchurl {
-      url = "https://github.com/earendil-works/pi/archive/refs/tags/v${finalAttrs.version}.tar.gz";
-      hash = "sha256-9oYOZ1JNJK2fhR/g0ZsYTvgcfS598b85xlc2Vb0ROYw=";
-    };
-
-    npmDepsHash = "sha256-ndEvWdB6sa5nNNtabk2OMZKUFG9x3op185deZHxFnXk=";
-    npmWorkspace = "packages/coding-agent";
-
-    # Git tags omit generated model data; use the matching published catalog offline.
-    modelData = prev.fetchurl {
-      url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${finalAttrs.version}.tgz";
-      hash = "sha512-3/W1vdDaVtpeMd23ElvJC12HLA5yS/BGqqcXF+0SK082dN7cbgNcCwguTBRBC258Ke8SzSvUW1B75iAf8w8IxA==";
-    };
-    postPatch = ''
-      tar -xzf ${finalAttrs.modelData} --strip-components=3 -C packages/ai/src/providers package/dist/providers/data
-    '';
-
-    # Skip native module rebuild for unneeded workspaces (e.g. canvas from web-ui).
-    npmRebuildFlags = ["--ignore-scripts"];
-
-    nativeBuildInputs = [prev.makeBinaryWrapper];
-
-    buildPhase = ''
-      runHook preBuild
-
-      npm run build:offline
-
-      runHook postBuild
-    '';
-
+{pi-upstream, ...}: final: prev: let
+  # Upstream's offline build already compiles these libraries; only pack its artifacts.
+  core = prev.callPackage "${pi-upstream}/nix/package.nix" {
+    source = pi-upstream;
+    stdenv =
+      prev.stdenv
+      // {
+        mkDerivation = attrs:
+          prev.stdenv.mkDerivation (attrs
+            // prev.lib.optionalAttrs (attrs.pname == "pi-workspace-packages") (
+              assert builtins.length (prev.lib.splitString "pack_package packages/coding-agent coding-agent" attrs.installPhase) == 2; {
+                installPhase =
+                  prev.lib.replaceStrings ["pack_package packages/coding-agent coding-agent"] [
+                    ''
+                      pack_package packages/coding-agent coding-agent
+                      pack_package packages/durable durable
+                      pack_package packages/protocol protocol
+                      pack_package packages/client client
+                      pack_package packages/server server''
+                  ]
+                  attrs.installPhase;
+              }
+            ));
+      };
+  };
+  # Parsing drops Nix string context; restore it from the complete upstream metadata.
+  lock = core.npmDeps.packageLock;
+  tarball = (builtins.fromJSON (builtins.unsafeDiscardStringContext lock)).packages."node_modules/@earendil-works/pi-coding-agent".resolved;
+  workspacePackages = prev.lib.strings.addContextFrom lock (builtins.dirOf (prev.lib.removePrefix "file:" tarball));
+in {
+  pi-coding-agent = core.overrideAttrs (old: {
+    passthru =
+      (old.passthru or {})
+      // {
+        inherit workspacePackages;
+        nodejs = prev.nodejs_22;
+      };
     postInstall =
-      ''
-        local nm="$out/lib/node_modules/pi-monorepo/node_modules"
-
-        for ws in @earendil-works/chord:packages/chord \
-                  @earendil-works/pi-telemetry:packages/telemetry \
-                  @earendil-works/pi-ai:packages/ai \
-                  @earendil-works/pi-codemode:packages/codemode \
-                  @earendil-works/pi-mcp:packages/mcp \
-                  @earendil-works/pi-durable:packages/durable \
-                  @earendil-works/pi-agent-core:packages/agent \
-                  @earendil-works/pi-protocol:packages/protocol \
-                  @earendil-works/pi-client:packages/client \
-                  @earendil-works/pi-server:packages/server \
-                  @earendil-works/pi-tui:packages/tui; do
-          IFS=: read -r pkg src <<< "$ws"
-          rm "$nm/$pkg"
-          cp -r "$src" "$nm/$pkg"
+      (old.postInstall or "")
+      + ''
+        for workspace in durable protocol client server; do
+          target="$out/lib/pi/node_modules/@earendil-works/pi-$workspace"
+          mkdir -p "$target"
+          tar -xzf ${workspacePackages}/$workspace.tgz --strip-components=1 -C "$target"
         done
-
-        find "$nm" -type l -lname '*/packages/*' -delete
-        find "$nm/.bin" -xtype l -delete
-      ''
-      + prev.lib.optionalString prev.stdenvNoCC.hostPlatform.isDarwin ''
-        rm -rf \
-          "$nm/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp" \
-          "$nm/@anthropic-ai/sandbox-runtime/vendor/seccomp"
       '';
-
-    postFixup = "wrapProgram $out/bin/pi --prefix PATH : ${
-      prev.lib.makeBinPath (
-        [
-          prev.ripgrep
-          prev.fd
-        ]
-        ++ prev.lib.optionals prev.stdenv.hostPlatform.isLinux [
-          prev.wl-clipboard
-          prev.xclip
-        ]
-      )
-    }";
-
-    doInstallCheck = true;
-    nativeInstallCheckInputs = [
-      prev.writableTmpDirAsHomeHook
-      prev.versionCheckHook
-    ];
-    versionCheckKeepEnvironment = ["HOME"];
-    versionCheckProgram = "${placeholder "out"}/bin/pi";
-    versionCheckProgramArg = "--version";
-
-    meta = {
-      description = "Coding agent CLI with read, bash, edit, write tools and session management";
-      homepage = "https://pi.dev/";
-      downloadPage = "https://www.npmjs.com/package/@earendil-works/pi-coding-agent";
-      changelog = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md";
-      license = prev.lib.licenses.mit;
-      mainProgram = "pi";
-      platforms = prev.lib.platforms.unix;
-    };
   });
 }

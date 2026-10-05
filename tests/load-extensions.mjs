@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 const [core, ...packages] = process.argv.slice(2);
 assert(core && packages.length, "provide Pi and package store paths");
 const { DefaultResourceLoader, SettingsManager } = await import(
-  pathToFileURL(`${core}/lib/node_modules/pi-monorepo/dist/index.js`)
+  pathToFileURL(`${core}/lib/pi/node_modules/@earendil-works/pi-coding-agent/dist/index.js`)
 );
 const loader = new DefaultResourceLoader({
   cwd: process.cwd(),

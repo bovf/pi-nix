@@ -70,33 +70,6 @@
           nix build ".#$attr" --out-link "$build_roots/$attr"
         }
 
-        update_pi_core() {
-          local meta version source_url source_hash model_hash
-          meta=$(npm_meta "@earendil-works%2fpi-coding-agent")
-          version=$(echo "$meta" | jq -er '."dist-tags".latest')
-          source_url="https://github.com/earendil-works/pi/archive/refs/tags/v$version.tar.gz"
-          source_hash=$(nix store prefetch-file --json "$source_url" | jq -er .hash)
-          model_hash=$(npm_meta "@earendil-works%2fpi-ai/$version" | jq -er '.dist.integrity')
-          [[ "$model_hash" == sha512-* ]] || exit 1
-          python3 - "$version" "$source_hash" "$model_hash" <<'PY'
-        import re
-        import sys
-        from pathlib import Path
-
-        version, source_hash, model_hash = sys.argv[1:4]
-        path = Path("overlays/pi-coding-agent/default.nix")
-        text = path.read_text()
-        text, version_count = re.subn(r'(version = ")[^"]+(";)', rf'\g<1>{version}\2', text, count=1)
-        text, source_count = re.subn(r'(src = .*?hash = ")[^"]+(";)', rf'\g<1>{source_hash}\2', text, count=1, flags=re.S)
-        text, model_count = re.subn(r'(modelData = .*?hash = ")[^"]+(";)', rf'\g<1>{model_hash}\2', text, count=1, flags=re.S)
-        text, npm_count = re.subn(r'(npmDepsHash = )[^;]+(;)', r'\g<1>prev.lib.fakeHash\2', text, count=1)
-        if (version_count, source_count, model_count, npm_count) != (1, 1, 1, 1):
-            raise SystemExit(f"unexpected Pi substitutions: {(version_count, source_count, model_count, npm_count)}")
-        path.write_text(text)
-        PY
-          resolve_build_hash "pi-coding-agent" "overlays/pi-coding-agent/default.nix" "npmDepsHash"
-        }
-
         update_ponytail() {
           local release version
           release=$(github_release "DietrichGebert/ponytail")
@@ -231,7 +204,6 @@
           resolve_build_hash "$attr" "overlays/pi-packages/default.nix" "npmDepsHash"
         }
 
-        update_pi_core
         update_simple_npm "pi-vim" "pi-vim" "overlays/pi-vim/default.nix"
         update_pi_package "rpiv-todo" "@juicesharp/rpiv-todo" "pkgs/rpiv-todo"
         update_pi_package "pi-archimedes" "pi-archimedes" "pkgs/pi-archimedes"

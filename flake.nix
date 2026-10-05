@@ -4,6 +4,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
+    pi-upstream = {
+      url = "github:earendil-works/pi/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     hunk = {
       url = "github:modem-dev/hunk";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,6 +19,7 @@
     self,
     nixpkgs,
     hunk,
+    pi-upstream,
     ...
   }: let
     systems = [
@@ -30,7 +36,7 @@
     piVimOverlay = import ./overlays/pi-vim {};
     piSearchOverlay = import ./overlays/pi-search {};
     piPackagesOverlay = import ./overlays/pi-packages {inherit hunk;};
-    piCodingAgentOverlay = import ./overlays/pi-coding-agent {};
+    piCodingAgentOverlay = import ./overlays/pi-coding-agent {inherit pi-upstream;};
 
     defaultOverlay = final: prev:
       (piVimOverlay final prev)

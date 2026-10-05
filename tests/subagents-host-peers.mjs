@@ -1,4 +1,4 @@
-// Run with Node 24 in the private filesystem/network sandbox documented in README:
+// Run with the official Node 22 in the private filesystem/network sandbox documented in README:
 // node tests/subagents-host-peers.mjs <pi store path> <pi-subagents store path>
 // Checks the installed resolver and native background child-session factory.
 // The retained Pi server Unix handshake is a separate packaging check, not the
@@ -13,7 +13,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const [core, subagents, childSocket, childServerId] = process.argv.slice(2);
 assert(core && subagents, "provide Pi and pi-subagents store paths");
-const root = `${core}/lib/node_modules/pi-monorepo`;
+const hostModules = `${core}/lib/pi/node_modules`;
+const root = `${hostModules}/@earendil-works/pi-coding-agent`;
 const { HOST_PEER_ALIASES, resolveHostPeerAliases, resolvePackageSubpath } = await import(
   pathToFileURL(`${subagents}/src/runs/background/runner-aliases.js`)
 );
@@ -53,10 +54,10 @@ const packagedPeers = [
   { specifier: "@earendil-works/pi-protocol", pkg: "@earendil-works/pi-protocol", subpath: "." },
 ];
 for (const { specifier, pkg, subpath } of [...required, ...packagedPeers]) {
-  const target = await realpath(resolved.aliases[specifier] ?? resolvePackageSubpath(`${root}/node_modules/${pkg}`, subpath));
+  const target = await realpath(resolved.aliases[specifier] ?? resolvePackageSubpath(`${hostModules}/${pkg}`, subpath));
   assert(target.startsWith(`${core}/`), `${specifier} escaped the host output`);
   if (pkg !== "typebox") {
-    const packageDir = pkg.endsWith("/pi-coding-agent") ? root : `${root}/node_modules/${pkg}`;
+    const packageDir = pkg.endsWith("/pi-coding-agent") ? root : `${hostModules}/${pkg}`;
     assert.equal(JSON.parse(await readFile(`${packageDir}/package.json`, "utf8")).version, hostVersion);
   }
   if (childSocket && specifier in resolved.aliases) {
@@ -107,7 +108,7 @@ if (childSocket) {
   }
   console.log("PASS: installed native preload resolved all bare host peers; default background child factory created/disposed an in-memory SDK session; lifecycle hooks; no prompt");
 
-  const testing = resolvePackageSubpath(`${root}/node_modules/@earendil-works/pi-server`, "./testing");
+  const testing = resolvePackageSubpath(`${hostModules}/@earendil-works/pi-server`, "./testing");
   const { TestServerHost } = await import(pathToFileURL(testing));
   const server = modules["@earendil-works/pi-server/unix"].createUnixServer(new TestServerHost(), {
     serverId: childServerId,
@@ -161,7 +162,7 @@ if (childSocket) {
         assert(!probe.stderr.includes("ERR_MODULE_NOT_FOUND"), probe.stderr);
       } else {
         assert.match(probe.stderr, /ERR_MODULE_NOT_FOUND/);
-        assert.match(probe.stderr, /Cannot find package '@earendil-works\/pi-[^']+'/);
+        assert(required.some(({ pkg }) => probe.stderr.includes(`Cannot find package '${pkg}'`)), probe.stderr);
         assert(!probe.stderr.includes("at runSubagent"), probe.stderr);
       }
     }

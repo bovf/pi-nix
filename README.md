@@ -39,18 +39,26 @@ packages.${system}.pi-btw
 packages.${system}.pi-goal
 ```
 
-`pi-coding-agent` tracks npm's `latest` version, built from the matching
-`earendil-works/pi` Git tag and its upstream workspace lockfile. Git tags omit
-generated model data, so the matching, integrity-pinned `@earendil-works/pi-ai`
-npm catalog is copied in and validated by upstream's offline build. This also
-covers npm releases published before GitHub release assets are available.
-The upstream `build:offline` script builds the matching workspaces with TypeScript
-7, including codemode, MCP and durable packages. Pi 1.0 removed the separate
-SQLite session-backend workspace; no obsolete backend is installed or substituted.
-The current workspaces and `pi-server` (including `pi-server/unix`) are installed
-alongside the other host peers. `pi-subagents` 0.74 uses native SDK sessions inside
-its detached runner, not the older Unix-server transport or an extension-local Pi fallback;
-all current required peers must resolve to host Pi 1.0.0.
+`pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
+locked to Pi **1.0.2** (`cd32f7725fdbddbaecdff5b1e68491563394e0ca`). The
+`pi-upstream` input tracks `stable` but follows this flake's existing nixpkgs.
+Upstream owns Node 22, source/install locks, catalog hydration and install checks;
+there is no second local core recipe or independently updated core hash.
+
+A uniquely matched workspace-install hook packs the upstream build's
+already-compiled durable/protocol/client/server libraries. Its locked npm
+metadata identifies that same workspace output; Nix string context is preserved.
+The libraries are installed beside the official modules in the **same core
+output**, sharing chord, AI and typebox. Remove this hook when upstream installs
+the libraries itself. The upstream recipe remains unmodified; no
+platform-specific recipe generation/import-from-derivation is needed.
+Native SDK and separate Unix-handshake tests remain required; neither CLI help
+nor the subagents transport substitutes for them. `pi-subagents` 0.74 uses native
+SDK sessions inside its detached runner, not the older Unix-server transport.
+
+The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
+its shared peers are hoisted in `lib/pi/node_modules`. Native `remote-pi` links
+point at those exact modules. Public package/overlay/registry names are unchanged.
 Extensions are built Nix-natively from npm tarballs, managed lockfiles, or pinned
 GitHub sources; no runtime/global npm installation is needed.
 
@@ -125,7 +133,11 @@ nix run .#update        # update all pins/managed locks, then build
 nix develop             # installs staged-file Alejandra pre-commit hook
 ```
 
-`nix run .#update` maintains every upstream pin (and refreshes the nixpkgs/Hunk flake inputs):
+For a core-only update, run `nix flake update pi-upstream`, then build and run the
+isolated integration checks with the core's `nodejs` passthru. This advances the
+locked official input; it does not rewrite source/catalog/npm hashes here.
+
+`nix run .#update` remains the full updater (including nixpkgs/Hunk inputs):
 
 ```text
 pi-coding-agent

@@ -368,11 +368,11 @@ in {
       cp -r . $out/
       # Standalone CLI/native ESM consumers cannot use Pi's extension aliases.
       # Link the same host modules, never private npm copies of the peers.
-      host=${final.pi-coding-agent}/lib/node_modules/pi-monorepo
+      host=${final.pi-coding-agent}/lib/pi/node_modules
       mkdir -p $out/node_modules/@earendil-works
-      ln -s "$host" $out/node_modules/@earendil-works/pi-coding-agent
-      ln -s "$host/node_modules/@earendil-works/pi-tui" $out/node_modules/@earendil-works/pi-tui
-      ln -s "$host/node_modules/typebox" $out/node_modules/typebox
+      ln -s "$host/@earendil-works/pi-coding-agent" $out/node_modules/@earendil-works/pi-coding-agent
+      ln -s "$host/@earendil-works/pi-tui" $out/node_modules/@earendil-works/pi-tui
+      ln -s "$host/typebox" $out/node_modules/typebox
       runHook postInstall
     '';
 

@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 
 const [core, remote, todo] = process.argv.slice(2);
 assert(core && remote && todo, "provide Pi, remote-pi and rpiv-todo store paths");
-const host = `${core}/lib/node_modules/pi-monorepo`;
+const host = `${core}/lib/pi/node_modules/@earendil-works/pi-coding-agent`;
 const peers = ["@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"];
 const resolve = (name, root) => import.meta.resolve(name, pathToFileURL(`${root}/package.json`));
 const manifest = async (root) => JSON.parse(await readFile(`${root}/package.json`, "utf8"));
