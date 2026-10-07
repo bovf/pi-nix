@@ -40,7 +40,7 @@ packages.${system}.pi-goal
 ```
 
 `pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
-locked to Pi **1.0.2** (`cd32f7725fdbddbaecdff5b1e68491563394e0ca`). The
+locked to Pi **1.0.4** (`7c10bd4337495ee613f2224843ecdf349b80d1df`). The
 `pi-upstream` input tracks `stable` but follows this flake's existing nixpkgs.
 Upstream owns Node 22, source/install locks, catalog hydration and install checks;
 there is no second local core recipe or independently updated core hash.
@@ -53,7 +53,7 @@ output**, sharing chord, AI and typebox. Remove this hook when upstream installs
 the libraries itself. The upstream recipe remains unmodified; no
 platform-specific recipe generation/import-from-derivation is needed.
 Native SDK and separate Unix-handshake tests remain required; neither CLI help
-nor the subagents transport substitutes for them. `pi-subagents` 0.74 uses native
+nor the subagents transport substitutes for them. `pi-subagents` 0.76.1 uses native
 SDK sessions inside its detached runner, not the older Unix-server transport.
 
 The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
@@ -166,14 +166,49 @@ published lockfiles/shrinkwraps even when the top-level version is unchanged.
 Upstream dependency constraints and existing dev/peer filtering are preserved:
 `pi-chrome-devtools` and `pi-goal` retain `@narumitw/pi-tui-kit` `0.59.0` under
 `^0.59.0`; `pi-btw` retains `0.64.0` under `^0.64.0`, not the incompatible
-`0.65.1` dist-tag. Pi core and Hunk retain their matching upstream build locks.
+newer incompatible dist-tags. Pi core and Hunk retain their matching upstream build locks.
 Update builds retain GC roots in a printed temporary directory outside the repo;
 remove that directory when the outputs are no longer needed.
 
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Checked pins (2026-10-02)
+### Checked pins (2026-10-07)
+
+The full updater ran once, selecting official Pi **1.0.2 → 1.0.4** from
+`stable`, matching npm latest, without modifying the official recipe or the
+SDK-artifact bridge. The current extension changes are:
+
+| Package | Previous → current |
+| --- | --- |
+| pi-archimedes | 2.9.0 → 2.9.3 |
+| pi-subagents | 0.74.0 → 0.76.1 |
+| plannotator-pi-extension | 0.27.25 → 0.28.7 |
+| ponytail | 4.10.1 → 4.13.0 |
+| pi-chrome-devtools | 0.53.4 → 0.54.0 |
+| pi-goal | 0.54.8 → 0.54.11 |
+
+Pi-vim 0.14.2, rpiv-todo 2.12.0, remote-pi 0.7.0, wait-what 0.13.1,
+LSP 0.49.9 and btw 0.61.1 were checked and remain current. All ten managed
+npm locks were regenerated: six changed and four remain byte-identical.
+All **400** unique resolved dependency versions/tarballs/integrities match
+registry metadata; root dependency constraints and documented filtering match
+the published manifests. Remote-pi still needs its existing host-peer repair.
+
+Nixpkgs advances to `7dd199b0e2993e37b4775ed66b1c291699608c9f`, Hunk to
+`9566e33d930e8844a0fe910e7b9d0f822b0728cb` (still version 0.23.0), and
+Hunk's treefmt-nix to `03d8ee1bcbc8f9638907bb79edb9673151d0e22b`.
+Other Hunk descendants and follows remain unchanged. The official Pi input's
+separate Intel-Darwin nixpkgs descendant remains upstream-owned and retained.
+
+Chrome DevTools 0.54 defaults to codemode capabilities and no longer activates
+host tools itself. Enable `defaultTools = ["+codemode"]` in Pi settings (or
+choose Chrome's direct/lazy mode). `badwater-ai` supplies that additive default
+when the package is selected, while allowing `extraSettings` to override it.
+The standalone bundled-CLI fixture explicitly enables codemode too; neither
+fixture nor generated-policy checks whitelist its missing-codemode warning.
+
+### Historical checked pins (2026-10-02)
 
 | Package | Previous → current |
 | --- | --- |
@@ -218,15 +253,17 @@ and standalone CLI consumers, which cannot rely on Pi's extension aliases.
 `rpiv-todo` 2.12.0 fixes its typebox peer upstream; no local patch is needed.
 Other package constraints remain unchanged.
 
-Pi 1.0 also removed `pi-agent-core/node`. Subagents 0.74 lists this unused
-export only in its runner alias inventory, not in runtime imports. The overlay
-strictly deletes that one declaration only for subagents 0.74.0 with Pi >=1.0;
-older hosts retain it. Remove this patch when upstream corrects the inventory.
-No missing-peer filtering or substitute module is used.
+Pi 1.0 removed `pi-agent-core/node`. Subagents 0.76.1 now marks that export
+optional upstream, skipping it only when the host does not declare it; a
+declared missing target still fails. The obsolete 0.74-only local patch is
+removed. The regression permits exactly that one optional descriptor, requires
+all twelve current aliases and host identities, and restores a mandatory
+obsolete alias as a failure control. No required-peer filtering or substitute
+module is introduced.
 
-- `python3 tests/update.py` (bash/jq/nix required) checks the updater offline,
-  including shared peer normalization, the copy-free remote-pi lock and the
-  owning Nix alias patch's old/new-host guard.
+- `python3 tests/update.py` (bash/jq required) checks the updater offline,
+  including shared peer normalization, the copy-free remote-pi lock and removal
+  of the retired alias patch.
 - `tests/remote-pi-host-peers.mjs` checks native ESM realpath/module identity,
   both standalone CLI import/help paths, and negative controls for the old
   manifest warning and a manifest-only repair retaining conflicting copies.
@@ -242,7 +279,7 @@ No missing-peer filtering or substitute module is used.
   negative control, plus restoration of the obsolete alias as a failure control.
   Its uninjected background SDK factory creates/disposes an
   in-memory session with startup/shutdown hooks, without prompting. All 12
-  current aliases resolve to Pi 1.0.0. The matching server/client `/unix`
+  current aliases resolve to Pi 1.0.4. The matching server/client `/unix`
   handshake is tested separately, not misidentified as subagents' transport.
 - `tests/bundled-cli.mjs` runs the actual installed `bin/pi` (the bundled Node
   entrypoint), loads packaged extensions, checks RPC startup/EOF shutdown and
@@ -268,7 +305,7 @@ roots=$(mktemp -d)
 nix build .#pi-coding-agent --out-link "$roots/core"
 nix build .#remote-pi --out-link "$roots/remote"
 nix build .#rpiv-todo --out-link "$roots/todo"
-nix build --inputs-from . nixpkgs#nodejs --out-link "$roots/node"
+nix build .#pi-coding-agent.nodejs --out-link "$roots/node"
 nix build --inputs-from . nixpkgs#bubblewrap --out-link "$roots/bwrap"
 node="$(readlink -f "$roots/node")/bin/node"
 core=$(readlink -f "$roots/core")
@@ -292,7 +329,7 @@ needs the experimental resolver flag. Keep build roots until validation ends.
 All 16 native outputs were realized on `x86_64-linux`. Local search usage and
 MCP initialize/list-tools/empty-query checks passed without a web query; their
 nixpkgs dependencies remain ddgr 2.2, Python 3.14.7 and MCP 1.29.0.
-Installed Pi 1.0's MCP name function still maps the `web-search` server and
+Installed Pi 1.0.4's MCP name function still maps the `web-search` server and
 `web_search` tool to exactly `mcp__web_search__web_search`.
 All derivations also evaluated on `aarch64-linux` and `aarch64-darwin`, without
 cross-build claims. `nix flake check --no-build --all-systems` evaluates the

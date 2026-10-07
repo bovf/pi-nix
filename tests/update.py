@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Offline regression check for upstream-owned core and fresh extension locks.
 
-Run: python3 tests/update.py (bash, jq and nix on PATH).
+Run: python3 tests/update.py (bash and jq on PATH).
 """
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -95,20 +94,8 @@ lock = json.loads((ROOT / "pkgs/remote-pi/package-lock.json").read_text())
 assert all(lock["packages"][""]["peerDependencies"][peer] == "*" for peer in peers)
 assert not any(key.endswith("node_modules/" + peer)
                for key in lock["packages"] for peer in peers)
-# Evaluate the owning Nix patch with old/new host versions, without builds or inputs.
-obsolete_alias = '@earendil-works/pi-agent-core/node'
-for host_version, patched in [('0.99.2', False), ('1.0.0', True), ('1.0.2', True)]:
-    expression = f'''let
-      overlay = import {ROOT / 'overlays/pi-packages'} {{ hunk = {{}}; }};
-      packages = overlay {{ pi-coding-agent.version = "{host_version}"; }} {{
-        buildNpmPackage = x: x;
-        lib.optionalString = condition: text: if condition then text else "";
-        lib.versionAtLeast = a: b: builtins.compareVersions a b >= 0;
-      }};
-    in packages.pi-subagents.postPatch'''
-    patch = subprocess.check_output(['nix', 'eval', '--offline', '--impure', '--raw', '--expr', expression], text=True,
-        env={**os.environ, 'NIX_CONFIG': os.environ.get('NIX_CONFIG', '') + '\nmax-jobs = 2\ncores = 4'})
-    assert (obsolete_alias in patch) == patched, (host_version, patch)
-    if patched:
-        assert '--replace-fail' in patch
-print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; exact subagents alias patch only on Pi >=1.0")
+# Upstream now handles its sole optional export; keep the retired local patch gone.
+packages = (ROOT / "overlays/pi-packages/default.nix").read_text()
+assert "runner-aliases.js" not in packages
+assert "@earendil-works/pi-agent-core/node" not in packages
+print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; retired subagents alias patch")

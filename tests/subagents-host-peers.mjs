@@ -20,16 +20,22 @@ const { HOST_PEER_ALIASES, resolveHostPeerAliases, resolvePackageSubpath } = awa
 );
 const resolved = resolveHostPeerAliases(root);
 assert.deepEqual(resolved.missing, [], "background runner host peers must exist");
-// The resolver adds these required aliases for Pi >= 0.85 (not exported in its list).
-const required = [...HOST_PEER_ALIASES,
+// Upstream marks only the removed ./node export optional; no required peer may disappear.
+const obsolete = "@earendil-works/pi-agent-core/node";
+assert.deepEqual(HOST_PEER_ALIASES.filter(({ optional }) => optional), [
+  { specifier: obsolete, pkg: "@earendil-works/pi-agent-core", subpath: "./node", optional: true },
+]);
+const nodeExport = resolvePackageSubpath(`${hostModules}/@earendil-works/pi-agent-core`, "./node");
+// The resolver also requires these chord aliases for Pi >= 0.85.
+const required = [...HOST_PEER_ALIASES.filter(({ specifier }) => specifier !== obsolete || nodeExport !== undefined),
   { specifier: "@earendil-works/chord", pkg: "@earendil-works/chord" },
   { specifier: "@earendil-works/chord/context", pkg: "@earendil-works/chord" },
 ];
 assert.deepEqual(Object.keys(resolved.aliases).sort(), required.map(({ specifier }) => specifier).sort());
 const hostVersion = JSON.parse(await readFile(`${root}/package.json`, "utf8")).version;
 if (Number(hostVersion.split(".")[0]) >= 1) {
-  const obsolete = '@earendil-works/pi-agent-core/node';
-  assert(!HOST_PEER_ALIASES.some(({ specifier }) => specifier === obsolete));
+  assert.equal(nodeExport, undefined);
+  assert.equal(resolved.aliases[obsolete], undefined);
   const fixture = await mkdtemp(join(process.cwd(), "obsolete-alias-"));
   try {
     const source = await readFile(`${subagents}/src/runs/background/runner-aliases.js`, "utf8");

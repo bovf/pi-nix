@@ -18,6 +18,7 @@ const original = existing ? await readFile(settingsPath, "utf8") : undefined;
 const settings = existing ? JSON.parse(original) : {
   packages, enableInstallTelemetry: false, enableAnalytics: false,
   compaction: { enabled: false }, "archimedes.mcp": { enabled: false },
+  defaultTools: ["+codemode"],
 };
 packages = settings.packages;
 assert(Array.isArray(packages) && packages.length && packages.every(p => typeof p === "string"));
