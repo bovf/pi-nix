@@ -206,6 +206,10 @@ in {
       substituteInPlace "$out/src/index.ts" \
         --replace-fail 'isPluginEnabled("image-paste")' 'false /* Pi core owns clipboard image handling. */' \
         --replace-fail 'isPluginEnabled("subagent")' 'false /* pi-subagents owns delegation. */'
+      # Pi has no "info" theme color; keep the Git-ahead indicator renderable.
+      substituteInPlace "$out/node_modules/@pi-archimedes/footer/src/utils/icons.ts" \
+        --replace-fail '"dim" | "info">' '"dim" | "accent">' \
+        --replace-fail 'ahead: "info"' 'ahead: "accent"'
     '';
 
     installPhase = ''

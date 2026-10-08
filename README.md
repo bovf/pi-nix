@@ -83,6 +83,12 @@ pkgs.piPackages.pi-goal
 
 `hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill. The packaged `pi-archimedes` leaves clipboard images to Pi core and delegation to `pi-subagents`, avoiding duplicate shortcuts and tools.
 
+Archimedes 2.9.3's footer uses the unsupported `info` theme color for Git's
+`ahead` indicator. A fail-fast packaging substitution changes both its color
+type declaration and value to Pi's `accent`; the footer stays enabled. Remove
+this compatibility fix when upstream supports the same regression unpatched.
+No package version, npm dependency lock or Pi core change is involved.
+
 Each entry is shaped like:
 
 ```nix
@@ -293,6 +299,16 @@ module is introduced.
   appends only the inert probe, rejects settings mutation and restores the original
   settings bytes. Never point it at a live home.
 
+- `tests/archimedes-footer.mjs <core> <archimedes>` loads the installed footer
+  through Pi's extension loader and executes its real component factory/render
+  with Pi's actual dark/light themes. A clean synthetic Git repository is one
+  commit ahead of a local upstream (no remote/push). It requires a visible,
+  accent-colored `↑1`, bounded line widths and zero logged errors/warnings across
+  seven thinking levels and widths 80/200, then disposes the component and runs
+  shutdown. The unpatched package fails with `Unknown theme color: info`.
+  This closes a gap in the RPC check, which intentionally does not render
+  custom footers; it is not a complete interactive terminal or provider test.
+
 Run runtime checks only in an empty, private filesystem **and** network
 namespace. An empty HOME or `unshare -Urn` alone does not isolate absolute home
 paths and host Unix sockets. Inspect startup hooks and installed wrappers when
@@ -324,6 +340,24 @@ Use a fresh fixture with the same sandbox for `load-extensions.mjs` or
 `bundled-cli.mjs`, passing the core then the desired package store paths;
 `subagents-host-peers.mjs` takes core and subagents. Only the native peer test
 needs the experimental resolver flag. Keep build roots until validation ends.
+
+For the footer check, also expose managed Git and `/bin/sh` (its Git status
+helper uses `execSync`); never bind the host's `/bin` or live working directory:
+
+```bash
+nix build .#pi-archimedes --out-link "$roots/archimedes"
+nix build --inputs-from . nixpkgs#git --out-link "$roots/git"
+nix build --inputs-from . nixpkgs#bash --out-link "$roots/bash"
+fixture=$(mktemp -d)
+"$roots/bwrap/bin/bwrap" --unshare-all --die-with-parent --new-session \
+  --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /tmp \
+  --dir /bin --ro-bind "$(readlink -f "$roots/bash")/bin/bash" /bin/sh \
+  --bind "$fixture" /fixture --ro-bind "$PWD/tests" /tests --chdir /fixture \
+  --clearenv --setenv HOME /fixture --setenv GIT_CONFIG_NOSYSTEM 1 \
+  --setenv PATH "$(dirname "$node"):$(readlink -f "$roots/git")/bin" \
+  --setenv PI_OFFLINE 1 "$node" /tests/archimedes-footer.mjs \
+  "$core" "$(readlink -f "$roots/archimedes")"
+```
 
 All 16 native outputs were realized on `x86_64-linux`. Local search usage and
 MCP initialize/list-tools/empty-query checks passed without a web query; their
