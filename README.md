@@ -40,7 +40,7 @@ packages.${system}.pi-goal
 ```
 
 `pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
-locked to Pi **1.0.4** (`7c10bd4337495ee613f2224843ecdf349b80d1df`). The
+locked to Pi **1.1.0** (`abe508e1b89912adde45528136c3221eb69acdd7`). The
 `pi-upstream` input tracks `stable` but follows this flake's existing nixpkgs.
 Upstream owns Node 22, source/install locks, catalog hydration and install checks;
 there is no second local core recipe or independently updated core hash.
@@ -166,47 +166,46 @@ published lockfiles/shrinkwraps even when the top-level version is unchanged.
 Upstream dependency constraints and existing dev/peer filtering are preserved:
 `pi-chrome-devtools` and `pi-goal` retain `@narumitw/pi-tui-kit` `0.59.0` under
 `^0.59.0`; `pi-btw` retains `0.64.0` under `^0.64.0`, not the incompatible
-newer incompatible dist-tags. Pi core and Hunk retain their matching upstream build locks.
+newer dist-tags. Pi core and Hunk retain their matching upstream build locks.
 Update builds retain GC roots in a printed temporary directory outside the repo;
 remove that directory when the outputs are no longer needed.
 
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Checked pins (2026-10-07)
+### Checked pins (2026-10-08)
 
-The full updater ran once, selecting official Pi **1.0.2 → 1.0.4** from
-`stable`, matching npm latest, without modifying the official recipe or the
-SDK-artifact bridge. The current extension changes are:
+The full updater selects official Pi **1.0.4 → 1.1.0** from `stable`,
+matching tag `v1.1.0` and npm latest. The official recipe and the local
+same-compilation SDK-artifact bridge are unchanged.
 
 | Package | Previous → current |
 | --- | --- |
-| pi-archimedes | 2.9.0 → 2.9.3 |
-| pi-subagents | 0.74.0 → 0.76.1 |
-| plannotator-pi-extension | 0.27.25 → 0.28.7 |
-| ponytail | 4.10.1 → 4.13.0 |
-| pi-chrome-devtools | 0.53.4 → 0.54.0 |
-| pi-goal | 0.54.8 → 0.54.11 |
+| plannotator-pi-extension | 0.28.7 → 0.28.8 |
+| ponytail | 4.13.0 → 5.0.0 |
 
-Pi-vim 0.14.2, rpiv-todo 2.12.0, remote-pi 0.7.0, wait-what 0.13.1,
-LSP 0.49.9 and btw 0.61.1 were checked and remain current. All ten managed
-npm locks were regenerated: six changed and four remain byte-identical.
-All **400** unique resolved dependency versions/tarballs/integrities match
-registry metadata; root dependency constraints and documented filtering match
-the published manifests. Remote-pi still needs its existing host-peer repair.
+Pi-vim 0.14.2, rpiv-todo 2.12.0, Archimedes 2.9.3, subagents 0.76.1,
+remote-pi 0.7.0, wait-what 0.13.1, LSP 0.49.9, Chrome 0.54.0, btw 0.61.1
+and goal 0.54.11 were checked and remain current. All ten managed npm locks
+were regenerated: Archimedes, Plannotator and remote-pi changed; seven remain
+byte-identical. All **400** unique dependency versions/tarballs/integrities
+match registry metadata; normalized root constraints still match the published
+manifests. Existing host-peer repairs and negative controls remain unchanged.
 
-Nixpkgs advances to `7dd199b0e2993e37b4775ed66b1c291699608c9f`, Hunk to
-`9566e33d930e8844a0fe910e7b9d0f822b0728cb` (still version 0.23.0), and
-Hunk's treefmt-nix to `03d8ee1bcbc8f9638907bb79edb9673151d0e22b`.
-Other Hunk descendants and follows remain unchanged. The official Pi input's
-separate Intel-Darwin nixpkgs descendant remains upstream-owned and retained.
+Root nixpkgs `7dd199b0e2993e37b4775ed66b1c291699608c9f` and Hunk
+`9566e33d930e8844a0fe910e7b9d0f822b0728cb` (0.23.0) remain at their audited
+targets. Only Hunk's treefmt-nix descendant advances to
+`0585216029b53d58eb9e0b52df274034c6ce26e8`; all follows are preserved.
+The official Pi release still pins Intel-Darwin nixpkgs to `c19db427…`.
+Its channel head is newer (`2bd3427b…`), but this release-owned descendant
+is intentionally retained rather than independently refreshed or flattened.
 
-Chrome DevTools 0.54 defaults to codemode capabilities and no longer activates
-host tools itself. Enable `defaultTools = ["+codemode"]` in Pi settings (or
-choose Chrome's direct/lazy mode). `badwater-ai` supplies that additive default
-when the package is selected, while allowing `extraSettings` to override it.
-The standalone bundled-CLI fixture explicitly enables codemode too; neither
-fixture nor generated-policy checks whitelist its missing-codemode warning.
+The native SDK lifecycle, separate Unix handshake, full host-peer identities,
+all packaged resources and installed bundled-CLI RPC startup/shutdown pass
+with empty stderr and zero warnings. Twelve workspace archives come from one
+offline compilation; installed durable/protocol/client/server files match it.
+These are isolated package checks, not authenticated or full interactive use.
+Chrome's conditional additive codemode default remains owned by `badwater-ai`.
 
 ### Historical checked pins (2026-10-02)
 
@@ -279,7 +278,7 @@ module is introduced.
   negative control, plus restoration of the obsolete alias as a failure control.
   Its uninjected background SDK factory creates/disposes an
   in-memory session with startup/shutdown hooks, without prompting. All 12
-  current aliases resolve to Pi 1.0.4. The matching server/client `/unix`
+  current aliases resolve to Pi 1.1.0. The matching server/client `/unix`
   handshake is tested separately, not misidentified as subagents' transport.
 - `tests/bundled-cli.mjs` runs the actual installed `bin/pi` (the bundled Node
   entrypoint), loads packaged extensions, checks RPC startup/EOF shutdown and
@@ -329,7 +328,7 @@ needs the experimental resolver flag. Keep build roots until validation ends.
 All 16 native outputs were realized on `x86_64-linux`. Local search usage and
 MCP initialize/list-tools/empty-query checks passed without a web query; their
 nixpkgs dependencies remain ddgr 2.2, Python 3.14.7 and MCP 1.29.0.
-Installed Pi 1.0.4's MCP name function still maps the `web-search` server and
+Installed Pi 1.1.0's MCP name function still maps the `web-search` server and
 `web_search` tool to exactly `mcp__web_search__web_search`.
 All derivations also evaluated on `aarch64-linux` and `aarch64-darwin`, without
 cross-build claims. `nix flake check --no-build --all-systems` evaluates the

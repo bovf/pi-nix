@@ -158,13 +158,13 @@ in {
 
   ponytail = prev.stdenvNoCC.mkDerivation {
     pname = "ponytail";
-    version = "4.13.0";
+    version = "5.0.0";
 
     src = prev.fetchFromGitHub {
       owner = "DietrichGebert";
       repo = "ponytail";
-      tag = "v4.13.0";
-      hash = "sha256-sf8WLd7PFXGRM7+LGaXDT/exA0YU9Ld8U5uZFBEqM/k=";
+      tag = "v5.0.0";
+      hash = "sha256-U+TGSju2VBYHqaWZckf/QQMZXZ15KhOREfpA5EN/Deo=";
     };
 
     installPhase = ''
@@ -192,7 +192,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-ivAeF8oo7t1PXm/q33RjewCPXEJmEZZkUekcneD0wV8=";
+    npmDepsHash = "sha256-r9ah/H+BaRmSQap0EXGATRl7DvCo2UVlPgtnACh6vw0=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
     npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -260,15 +260,15 @@ in {
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.28.7";
+    version = "0.28.8";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-AoabuWzli1Tws9a5SUzU6Mx8f1HQMLZBhH/PBKVbBSqc9WBSpwcwgfKPZtC1E1/nkmfF8ikSlAm2+EXn3UI3Mw==";
+      hash = "sha512-SvRRvyvexkmpZF/nQ2UlewNkvG7EmFnEqUG/3+cg3wz6wH9svY0EDHak4b/C+ohr+pbJiHDhI7czSZKUIOuGoA==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-/P6ypQ6ivTvxQRrq0wPqCss2DrLZfWTcITKR0GDYq20=";
+    npmDepsHash = "sha256-eP2jUZUwCJMuQ/x2Xj0lzoldtsH72Lq9LoVgN0NHoN4=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -340,7 +340,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-iv6eWqIxdVyY3No2tmj7pqob325ZxtzZ2ufbEVNKooM=";
+    npmDepsHash = "sha256-x+ZNZFfW7HLBQtC/lkhyeWWj8OmxIYqmwYdWqSPeW5c=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
