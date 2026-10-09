@@ -64,6 +64,11 @@
       default = pkgs.pi-coding-agent;
     });
 
+    # This package runs the footer checks during its build, not only via flake check.
+    checks = forAllSystems (system: {
+      archimedes-footer = self.packages.${system}.pi-archimedes;
+    });
+
     apps = forAllSystems (system: appsLib.mkApps system);
 
     devShells = forAllSystems (system: let

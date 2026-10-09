@@ -182,50 +182,110 @@ in {
     };
   };
 
-  pi-archimedes = prev.buildNpmPackage rec {
-    pname = "pi-archimedes";
-    version = "2.9.3";
+  pi-archimedes = let
+    pi = final.pi-coding-agent;
+    footerCheck = probe: let
+      success = "PASS: actual packaged footer, real Git ahead=1, Pi dark/light themes, 28 renders; no prompt";
+      expected =
+        if probe
+        then "EXPECTED: unpatched footer still fails with Unknown theme color: info; compatibility patch required"
+        else success;
+    in ''
+      fixture=$(mktemp -d "$TMPDIR/archimedes-footer.XXXXXXXX")
+      mkdir "$fixture/home" "$fixture/tmp"
+      status=0
+      (
+        cd "$fixture/home"
+        env -i HOME="$fixture/home" TMPDIR="$fixture/tmp" \
+          PATH=${prev.lib.makeBinPath [pi.nodejs prev.git prev.bash prev.coreutils]} \
+          GIT_CONFIG_NOSYSTEM=1 PI_OFFLINE=1 \
+          ${prev.coreutils}/bin/timeout --kill-after=5s 60s \
+          ${pi.nodejs}/bin/node ${../../tests/archimedes-footer.mjs} \
+          ${pi} "$out" ${prev.lib.optionalString probe "--probe-unpatched"}
+      ) > "$fixture/stdout" 2> "$fixture/stderr" || status=$?
+      ${prev.lib.optionalString probe ''
+        if [ "$status" -eq 0 ] && [ ! -s "$fixture/stderr" ] && grep -Fxq '${success}' "$fixture/stdout"; then
+          cat "$fixture/stdout" >&2
+          echo "ERROR: PI_ARCHIMEDES_PATCH_OBSOLETE: the unpatched footer already renders with Pi ${pi.version}." >&2
+          echo "Pi ${pi.version}: ${pi}; Archimedes: $out." >&2
+          echo "Retire the info-to-accent compatibility patch and its unpatched-failure probe; retain the successful-render check." >&2
+          exit 1
+        fi
+      ''}
+      if [ "$status" -ne ${
+        if probe
+        then "42"
+        else "0"
+      } ] || [ -s "$fixture/stderr" ] || ! grep -Fxq '${expected}' "$fixture/stdout"; then
+        cat "$fixture/stdout" "$fixture/stderr" >&2
+        echo "ERROR: PI_ARCHIMEDES_${
+        if probe
+        then "UPSTREAM_PROBE_FAILED"
+        else "FOOTER_REGRESSION"
+      }: refusing Archimedes and dependent generation builds." >&2
+        echo "Pi ${pi.version}: ${pi}; Archimedes: $out; test exit status: $status." >&2
+        echo "Check deadline: 60 seconds (timeout exits 124; forced kill exits 137)." >&2
+        echo "Inspect the footer/theme/loader diagnostics above; do not bypass this compatibility check." >&2
+        exit 1
+      fi
+      cat "$fixture/stdout"
+      rm -rf "$fixture"
+    '';
+  in
+    prev.buildNpmPackage rec {
+      pname = "pi-archimedes";
+      version = "2.9.3";
 
-    src = prev.fetchurl {
-      url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
-      hash = "sha512-pOZIub4E73VzWtTaa+e95wnZKYimGCjgggOQPLS3u81Tgq+RAwuWrx4TzqdZKX2HXg0zlxITeEBVBJV0y2o0BQ==";
+      src = prev.fetchurl {
+        url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
+        hash = "sha512-pOZIub4E73VzWtTaa+e95wnZKYimGCjgggOQPLS3u81Tgq+RAwuWrx4TzqdZKX2HXg0zlxITeEBVBJV0y2o0BQ==";
+      };
+
+      sourceRoot = "package";
+      npmDepsHash = "sha256-r9ah/H+BaRmSQap0EXGATRl7DvCo2UVlPgtnACh6vw0=";
+      dontNpmBuild = true;
+      npmFlags = ["--legacy-peer-deps" "--omit=dev"];
+      npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
+      npm_config_legacy_peer_deps = "true";
+
+      postPatch = ''
+        cp ${../../pkgs/pi-archimedes/package-lock.json} package-lock.json
+      '';
+
+      postFixup = ''
+        substituteInPlace "$out/src/index.ts" \
+          --replace-fail 'isPluginEnabled("image-paste")' 'false /* Pi core owns clipboard image handling. */' \
+          --replace-fail 'isPluginEnabled("subagent")' 'false /* pi-subagents owns delegation. */'
+        # Fail if either upstream has fixed the bug: never carry an obsolete patch silently.
+        ${footerCheck true}
+        # Pi has no "info" theme color; keep the Git-ahead indicator renderable.
+        substituteInPlace "$out/node_modules/@pi-archimedes/footer/src/utils/icons.ts" \
+          --replace-fail '"dim" | "info">' '"dim" | "accent">' \
+          --replace-fail 'ahead: "info"' 'ahead: "accent"'
+      '';
+
+      installPhase = ''
+        runHook preInstall
+        mkdir -p $out
+        cp -r . $out/
+        runHook postInstall
+      '';
+
+      # A passthru test alone would not block Home Manager/NixOS generation builds.
+      doInstallCheck = true;
+      installCheckPhase = ''
+        runHook preInstallCheck
+        ${footerCheck false}
+        runHook postInstallCheck
+      '';
+
+      meta = {
+        description = "Integrated extension suite for the Pi coding agent";
+        homepage = "https://github.com/danielcherubini/pi-archimedes";
+        license = prev.lib.licenses.mit;
+        platforms = prev.lib.platforms.unix;
+      };
     };
-
-    sourceRoot = "package";
-    npmDepsHash = "sha256-r9ah/H+BaRmSQap0EXGATRl7DvCo2UVlPgtnACh6vw0=";
-    dontNpmBuild = true;
-    npmFlags = ["--legacy-peer-deps" "--omit=dev"];
-    npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
-    npm_config_legacy_peer_deps = "true";
-
-    postPatch = ''
-      cp ${../../pkgs/pi-archimedes/package-lock.json} package-lock.json
-    '';
-
-    postFixup = ''
-      substituteInPlace "$out/src/index.ts" \
-        --replace-fail 'isPluginEnabled("image-paste")' 'false /* Pi core owns clipboard image handling. */' \
-        --replace-fail 'isPluginEnabled("subagent")' 'false /* pi-subagents owns delegation. */'
-      # Pi has no "info" theme color; keep the Git-ahead indicator renderable.
-      substituteInPlace "$out/node_modules/@pi-archimedes/footer/src/utils/icons.ts" \
-        --replace-fail '"dim" | "info">' '"dim" | "accent">' \
-        --replace-fail 'ahead: "info"' 'ahead: "accent"'
-    '';
-
-    installPhase = ''
-      runHook preInstall
-      mkdir -p $out
-      cp -r . $out/
-      runHook postInstall
-    '';
-
-    meta = {
-      description = "Integrated extension suite for the Pi coding agent";
-      homepage = "https://github.com/danielcherubini/pi-archimedes";
-      license = prev.lib.licenses.mit;
-      platforms = prev.lib.platforms.unix;
-    };
-  };
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";

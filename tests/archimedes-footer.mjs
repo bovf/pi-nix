@@ -1,14 +1,17 @@
 // Run in a PRIVATE filesystem/network namespace with empty HOME/cwd and
 // store-only Node + Git + shell on PATH. No live repositories, settings or auth.
-// Usage: node tests/archimedes-footer.mjs <pi store path> <archimedes store path>
+// Usage: node tests/archimedes-footer.mjs <pi> <archimedes> [--probe-unpatched]
+// Probe exits 42 only for the known caught info-color failure, 0 if already fixed.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 
-const [core, archimedes] = process.argv.slice(2);
+const [core, archimedes, mode] = process.argv.slice(2);
 assert(core && archimedes, "provide Pi and Archimedes store paths");
+assert(process.argv.length <= 5 && (!mode || mode === "--probe-unpatched"), "unknown footer test arguments");
+const probe = mode === "--probe-unpatched";
 assert.equal(process.cwd(), process.env.HOME, "use a private fixture HOME/cwd");
 const sdkRoot = `${core}/lib/pi/node_modules/@earendil-works`;
 const { DefaultResourceLoader, SettingsManager, Theme } = await import(
@@ -52,16 +55,19 @@ assert.equal(stop?.length, 1);
 let thinking = "high";
 runtime.getThinkingLevel = () => thinking;
 let rendered = 0;
+let knownInfoFailure = false;
 const diagnostics = [];
 for (const level of ["error", "warn"]) {
   const write = console[level];
-  console[level] = (...args) => { diagnostics.push(args); write(...args); };
+  console[level] = (...args) => {
+    diagnostics.push({ level, args });
+    if (!probe) write(...args);
+  };
 }
 
 for (const name of ["dark", "light"]) {
   const theme = getThemeByName(name);
   assert(theme instanceof Theme, "use the installed Pi Theme, not a color mock");
-  assert.throws(() => theme.fg("info", "↑1"), /Unknown theme color: info/);
   let footer;
   let disposed = 0;
   const ctx = {
@@ -82,16 +88,26 @@ for (const name of ["dark", "light"]) {
   try {
     await start[0]({ type: "session_start", reason: "startup" }, ctx);
     assert(footer, "actual packaged footer factory must be installed");
-    for (thinking of ["off", "minimal", "low", "medium", "high", "xhigh", "max"]) {
+    renders: for (thinking of ["off", "minimal", "low", "medium", "high", "xhigh", "max"]) {
       for (const width of [80, 200]) {
         // The original footer catches the color exception, logs it, and returns [].
         // Assert actual nonempty output and the colored indicator on every redraw.
         footer.invalidate();
         const lines = footer.render(width);
+        if (probe && lines.length === 0 && diagnostics.length === 1
+          && diagnostics[0].level === "error" && diagnostics[0].args.length === 2
+          && diagnostics[0].args[0] === "[archimedes:footer] Render error:"
+          && diagnostics[0].args[1]?.message === "Unknown theme color: info") {
+          knownInfoFailure = true;
+          diagnostics.length = 0; // Only this explicitly verified negative control is expected.
+          break renders;
+        }
+        assert.deepEqual(diagnostics, [], "unexpected footer error or warning");
         assert(lines.length > 0, `${name}/${thinking}/${width}: footer disappeared`);
         assert(lines.every(line => visibleWidth(line) <= width));
         const output = lines.join("\n");
-        assert(output.includes(theme.fg("accent", "↑1")), "ahead indicator must use Pi's accent");
+        // An upstream repair may choose another supported color; the local patch uses accent.
+        if (!probe) assert(output.includes(theme.fg("accent", "↑1")), "ahead indicator must use Pi's accent");
         assert.match(stripVTControlCharacters(output), /footer-test.*↑1/);
         assert.match(stripVTControlCharacters(output), /footer-fixture/);
         rendered++;
@@ -102,7 +118,14 @@ for (const name of ["dark", "light"]) {
     await stop[0]({ type: "session_shutdown", reason: "quit" }, ctx);
   }
   assert.equal(disposed, 1, "release the branch subscription");
+  if (knownInfoFailure) break;
 }
 runtime.invalidate();
 assert.deepEqual(diagnostics, [], "footer must not log errors or warnings");
-console.log(`PASS: actual packaged footer, real Git ahead=1, Pi dark/light themes, ${rendered} renders; no prompt`);
+if (knownInfoFailure) {
+  console.log("EXPECTED: unpatched footer still fails with Unknown theme color: info; compatibility patch required");
+  process.exitCode = 42;
+} else {
+  assert.equal(rendered, 28);
+  console.log(`PASS: actual packaged footer, real Git ahead=1, Pi dark/light themes, ${rendered} renders; no prompt`);
+}

@@ -309,6 +309,29 @@ module is introduced.
   This closes a gap in the RPC check, which intentionally does not render
   custom footers; it is not a complete interactive terminal or provider test.
 
+`checks.<system>.archimedes-footer` is the **checked Archimedes package itself**
+(on x86_64-linux, aarch64-linux and aarch64-darwin). Run
+`nix build .#checks.x86_64-linux.archimedes-footer -L` or `nix flake check -L`.
+The package runs these gates in the Nix build sandbox, with cleared environment,
+private HOME/cwd/temp and managed Node/Git. They are not optional passthru tests:
+Home Manager/system generations depending on this package also fail if a gate
+fails, even when `nix flake check` was not run. The derivation depends on
+`pkgs.pi-coding-agent`, so changing either package invalidates the checked build.
+
+Before applying the color patch, `--probe-unpatched` runs the real footer without
+requiring the local accent choice. Exit 42 is reserved for the precisely verified
+caught `Unknown theme color: info` failure. All 28 successful unpatched renders
+instead fail the package with `PI_ARCHIMEDES_PATCH_OBSOLETE`: upstream Archimedes
+or Pi has made the workaround unnecessary. Review/remove the color substitution
+and this negative probe, retaining an appropriate successful-render regression.
+Other probe failures report `PI_ARCHIMEDES_UPSTREAM_PROBE_FAILED`, not proof that
+the patch is needed. After fixup, the mandatory install check requires all 28
+patched renders, completion marker and empty stderr; failure reports
+`PI_ARCHIMEDES_FOOTER_REGRESSION`. Each invocation has a 60-second deadline;
+a stuck loader/shutdown also fails explicitly. Logs name both store paths. Never disable the
+gates to complete an update. The mirror-only GitLab pipeline remains unchanged;
+non-native check declarations are not claims of execution on this Linux host.
+
 Run runtime checks only in an empty, private filesystem **and** network
 namespace. An empty HOME or `unshare -Urn` alone does not isolate absolute home
 paths and host Unix sockets. Inspect startup hooks and installed wrappers when
