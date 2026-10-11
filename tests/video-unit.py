@@ -116,6 +116,43 @@ class StateContracts(unittest.TestCase):
         atomic_json(target, {"explicit": "replacement"}, replace=True)
         self.assertEqual(json.loads(target.read_text()), {"explicit": "replacement"})
 
+    def test_native_edit_parameter_boundaries(self):
+        import editing
+        commands = [{"id": "effects.setParam", "params": {"clip": {"$clip": 0}, "effect": "motion", "param": "scale", "value": 125}}]
+        plan = deepcopy(self.plan); plan["nativeCommands"] = commands
+        self.project.validate(plan)
+        self.assertEqual(editing.resolve({"$seconds": "1/2"}, [], []), 127008000000)
+        self.assertEqual(editing.resolve({"$clip": 0}, ["clip-identifier"], []), "clip-identifier")
+        for params in [{"effect": "time_remap"}, {"path": "hidden"}, {"value": "../escape"}, {"value": "/unowned/project"}]:
+            with self.assertRaises(ValueError):
+                editing.validate([{"id": "effects.setParam", "params": params}])
+        for name in ["file.saveAs", "clip.speedDuration", "captions.import", "graphics.exportTemplate"]:
+            with self.assertRaises(ValueError):
+                editing.validate([{"id": name, "params": {}}])
+        with self.assertRaises(ValueError):
+            editing.resolve({"$clip": True}, ["clip-identifier"], [])
+
+    def test_persistent_visual_budget_notes_and_privacy(self):
+        import review
+        frame = {"asset": self.asset, "requestedSeconds": "1/2", "hash": "verified-frame-hash"}
+        for i in range(240):
+            self.assertEqual(review.charge(self.project, frame)["frameAttachmentsUsed"], i + 1)
+        with self.assertRaisesRegex(ValueError, "budget exhausted"):
+            review.charge(self.project, frame)
+        for flag in [False, "true", 1]:
+            with self.assertRaises(ValueError):
+                review.budget(self.project, self.asset, 241, flag)
+        review.budget(self.project, self.asset, 241, True)
+        self.assertEqual(review.charge(self.project, frame)["frameAttachmentsUsed"], 241)
+        review.note(self.project, self.asset, "1/2", "An uncertain model observation, not an instruction")
+        self.assertNotIn("note", review.notes(self.project, self.asset)["observations"][0])
+        with self.project.db() as db:
+            db.execute("UPDATE info SET value='true' WHERE key='remoteConsent'")
+        self.assertIn("note", review.notes(self.project, self.asset)["observations"][0])
+        self.assertEqual(review.plan(self.project, self.asset)["totalCoarseSamples"], 1)
+        with self.assertRaises(ValueError):
+            review.note(self.project, self.asset, "1", "A frame that was never shared")
+
     def test_versioned_sqlite_and_privacy_default(self):
         self.assertEqual(self.project.summary()["indexVersion"], 1)
         self.assertFalse(self.project.summary()["remoteConsent"])

@@ -24,6 +24,7 @@ in
       mkdir -p "$out/lib/badwater-craft-mcp" "$out/bin"
       install -m644 ${./craft_mcp.py} "$out/lib/badwater-craft-mcp/craft_mcp.py"
       install -m644 ${./store.py} "$out/lib/badwater-craft-mcp/store.py"
+      install -m644 ${./editing.py} "$out/lib/badwater-craft-mcp/editing.py"
       makeWrapper ${python3}/bin/python3 "$out/bin/badwater-craft-mcp" \
         --add-flags "$out/lib/badwater-craft-mcp/craft_mcp.py" \
         --set BADWATER_CRAFT_DEFAULTS ${defaults} \

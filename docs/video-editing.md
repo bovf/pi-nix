@@ -129,9 +129,11 @@ QC independently decodes H.264/AAC output, dimensions/FPS/duration and at most16
 representative source/output RGB midpoints and16 audio boundaries. Black/silence,
 clipping/possible abrupt edges are review findings, not automatic deletion or
 semantic judgment. RGB MAE32/codec/color/conform assumptions are conservative and
-may need human review. Captions/music/effects, third-party project export,
-multicamera/drift, semantic search/diarization and other editorial profiles are
-unsupported defaults, not fake capability advertisements.
+may need human review. Optional nativeCommands add in-document effects/graphics/captions/transitions; save/reopen identity and an effects-aware native-composite comparison replace inappropriate unmodified-source pixel matching for those plans. This is not an independent renderer/creative-quality certification. See the packaged workflow reference for symbolic clip/time/result references and strict file/retiming restrictions.
+
+The packaged read-only `video_model_capabilities` tool reports the active Pi model, without authentication/files/network access or changing provider/model settings. Visual review pages the whole source every15 seconds, persists bounded model observations and refines candidates. Default240 image attachments per asset includes repeated frames; increasing it requires approval. Thirty-minute initial coverage is120 samples, not continuous understanding. Notes are untrusted inferences and their text is withheld after consent revocation.
+
+`native_catalog`, `native_batch` and `native_result_page` federate selected verified native apps through this wrapper with job-scoped per-app writes, individual approved read-only inputs and bounded replies. SoundCraft accepts explicit selected cuts<=120s, not full recordings. General native workspaces are not timeline revisions. ArtCraft remains install-only. Automatic music/generative assets, retiming/multicamera/drift-aware plans, third-party timeline export and semantic search/diarization remain unsupported.
 
 Whisper weights:77,704,715 bytes. Earlier measured full engine closure:1,429,156,536
 bytes (includes reused dependencies, not new download size or workload RSS). CPU

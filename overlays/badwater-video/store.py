@@ -255,9 +255,11 @@ class Project:
         return result
 
     def validate(self, plan):
-        allowed = {"version", "output", "clips", "constraints", "audio", "notes"}
+        import editing
+        allowed = {"version", "output", "clips", "constraints", "audio", "notes", "nativeCommands"}
         if set(plan) - allowed or type(plan.get("version")) is not int or plan.get("version") != 1:
-            raise ValueError("unsupported plan version/fields (captions/effects/multicamera are not implemented)")
+            raise ValueError("unsupported plan version/fields")
+        editing.validate(plan.get("nativeCommands", []))
         out = plan["output"]
         if set(out) - {"width", "height", "fps", "aspect"}:
             raise ValueError("unknown output setting")

@@ -8,6 +8,9 @@ from fractions import Fraction
 from pathlib import Path
 
 from jobs import Jobs
+import review
+import editing
+import broker
 from native import NativeMCP
 from store import (MEDIA_EXTENSIONS, PIPELINE, TICKS, Policy, Project, atomic_json,
                    digest, identifier, json_text, load_json, no_links, publish, rational)
@@ -149,10 +152,12 @@ class Engine:
                     raise ValueError("cached frame metadata differs from its authorized identity")
                 if digest(path) != result["hash"]:
                     raise ValueError("cached frame was modified")
-                return {**result, "cached": True, "shareWithModel": share_with_model}
             except (ValueError, OSError, KeyError, TypeError):
                 if not refresh:
                     raise
+            else:
+                budget = review.charge(p, result) if share_with_model else {}
+                return {**result, "cached": True, "shareWithModel": share_with_model, **budget}
         if refresh:
             # Keep invalid/orphaned derived bytes for inspection; never clean up/delete caches.
             for artifact in [path, record]:
@@ -163,7 +168,8 @@ class Engine:
         publish(temp, path)
         result["path"] = str(path)
         atomic_json(record, result)
-        return {**result, "cached": False, "shareWithModel": share_with_model}
+        budget = review.charge(p, result) if share_with_model else {}
+        return {**result, "cached": False, "shareWithModel": share_with_model, **budget}
 
     def _analyze(self, project, args, job):
         p = self.project(project)
@@ -311,6 +317,20 @@ class Engine:
             result["privacy"] = "transcript text withheld until explicit permission"
         return result
 
+    def native_catalog(self, project, application):
+        if application not in self.config.get("craftApplications", {}):
+            raise ValueError("application has no selected verified MCP backend")
+        self.project(project)
+        return self.jobs.submit(project, "native", {"application": application, "catalog": True})
+
+    def native_batch(self, project, application, calls):
+        self.project(project)
+        broker.validate(self, application, calls)
+        return self.jobs.submit(project, "native", {"application": application, "calls": calls})
+
+    def _native(self, project, args, job):
+        return broker.run(self, project, args, job)
+
     def validate(self, project, plan):
         return self.project(project).validate(plan)
 
@@ -389,13 +409,17 @@ class Engine:
                 placed = film.tool("sequence_inspect", {})
                 video_clips = [c["clip"] for track in placed["video"] for c in track["items"]]
                 film.tool("command_run", {"id": "clip.fitToFrame", "params": {"clips": video_clips}})
+                native_results = editing.run(film, plan.get("nativeCommands", []), video_clips)
+                embellished = film.tool("sequence_inspect", {})
                 native = work / "native.fcproj"
                 film.tool("command_run", {"id": "file.saveAs", "params": {"path": str(native)}})
                 reopened = film.tool("command_run", {"id": "file.open", "params": {"path": str(native)}})
                 if reopened.get("missingMedia"):
                     raise ValueError("native project reopened with missing media")
                 inspection = film.tool("sequence_inspect", {})
-                actual = [c for track in inspection["video"] for c in track["items"]]
+                if plan.get("nativeCommands") and inspection != embellished:
+                    raise ValueError("native effects/graphics/captions differ after save/reopen")
+                actual = [c for track in inspection["video"] for c in track["items"] if c["item"] in media_ids.values()]
                 expected_ranges = validation["ranges"]
                 if len(actual) != len(expected_ranges):
                     raise ValueError("native timeline cut count differs from the validated plan")
@@ -412,7 +436,7 @@ class Engine:
             target = directory / "project.fcproj"
             publish(native, target)
             atomic_json(directory / "plan.json", plan)
-            atomic_json(directory / "provenance.json", {"pipeline": PIPELINE, "backend": self.config["filmcraft"], "validation": validation, "sources": {k: {"path": v["path"], "hash": v["hash"]} for k, v in sources.items()}, "audioProcessing": sound_results, "nativeInspection": inspection})
+            atomic_json(directory / "provenance.json", {"pipeline": PIPELINE, "backend": self.config["filmcraft"], "validation": validation, "sources": {k: {"path": v["path"], "hash": v["hash"]} for k, v in sources.items()}, "audioProcessing": sound_results, "nativeInspection": inspection, "nativeCommands": plan.get("nativeCommands", []), "nativeCommandResults": native_results})
             db.execute("INSERT INTO revisions VALUES (?,?,?,?,?)", (revision, latest, json_text(plan), str(target), digest(target)))
         return {"revision": revision, "parent": latest, "nativeProject": str(target), "plan": str(directory / "plan.json"), "provenance": str(directory / "provenance.json"), "duration": validation["duration"], "originalsWritten": False}
 
@@ -455,13 +479,15 @@ class Engine:
         work = self.policy.write(p.root / ".work" / job / "render.mp4").parent
         output = work / "render.mp4"
         argv = [self.config["filmcraft"], "--project", r["native_path"], "export", str(output), "--format", "h264"]
+        if r["plan"].get("nativeCommands"):
+            argv += ["--settings", '{"burnCaptions":true}']
         expected = rational(validation["duration"])
         if args["preview"]:
             expected = min(expected, rational(args["seconds"]))
             argv += ["--start", "0", "--end", str(float(expected))]
         stdout, stderr = self.policy.run(argv, work, timeout=self.config.get("timeoutSeconds", 1200))
         atomic_json(work / "native-export-log.json", {"stdout": stdout[-8000:].decode("utf-8", "replace"), "stderr": stderr[-8000:].decode("utf-8", "replace")})
-        qc = self.qc(p, output, expected, validation)
+        qc = self.qc(p, output, expected, validation, r["native_path"] if r["plan"].get("nativeCommands") else None)
         atomic_json(work / "qc.json", qc)
         if not qc["passed"]:
             raise ValueError("deterministic export QC failed; prior output preserved. Inspect the job's qc.json and repair the edit explicitly.")
@@ -470,7 +496,7 @@ class Engine:
         return {"video": str(target), "revision": r["id"], "nativeProject": r["native_path"], "plan": str(Path(r["native_path"]).with_name("plan.json")),
                 "provenance": str(Path(r["native_path"]).with_name("provenance.json")), "qc": qc, "qcPath": str(work / "qc.json"), "backend": "FilmCraft native H.264/AAC export", "originalsWritten": False}
 
-    def qc(self, p, output, expected, validation):
+    def qc(self, p, output, expected, validation, native_reference=None):
         stdout, _ = self.policy.run([self.config["ffprobe"], "-v", "error", "-show_streams", "-show_format", "-of", "json", str(output)])
         metadata = json.loads(stdout)
         streams = metadata["streams"]
@@ -508,6 +534,10 @@ class Engine:
             dimensions = validation["output"]
             conform = f"scale={dimensions['width']}:{dimensions['height']}:force_original_aspect_ratio=decrease,pad={dimensions['width']}:{dimensions['height']}:(ow-iw)/2:(oh-ih)/2,scale=16:16"
             ref, _ = self.policy.run([self.config["ffmpeg"], "-nostdin", "-v", "error", "-ss", str(float(source_time)), "-i", source["path"], "-frames:v", "1", "-vf", conform, "-pix_fmt", "rgb24", "-f", "rawvideo", "-"])
+            if native_reference:
+                reference = self.policy.write(p.root / ".work" / ("qc-" + uuid.uuid4().hex) / "reference.png")
+                self.policy.run([self.config["filmcraft"], "--project", native_reference, "render", "--seconds", str(float(position)), "--out", str(reference)])
+                ref, _ = self.policy.run([self.config["ffmpeg"], "-nostdin", "-v", "error", "-i", str(reference), "-frames:v", "1", "-vf", "scale=16:16", "-pix_fmt", "rgb24", "-f", "rawvideo", "-"])
             observed, _ = self.policy.run([self.config["ffmpeg"], "-nostdin", "-v", "error", "-ss", str(float(position)), "-i", str(output), "-frames:v", "1", "-vf", "scale=16:16", "-pix_fmt", "rgb24", "-f", "rawvideo", "-"])
             error = sum(abs(x - y) for x, y in zip(ref, observed, strict=True)) / len(ref) if len(ref) == len(observed) == 16 * 16 * 3 else 255
             cut_checks.append({"asset": cut["asset"], "sourceSeconds": str(source_time), "outputSeconds": str(position), "meanAbsoluteRGBError": error, "threshold": 32})
@@ -526,7 +556,7 @@ class Engine:
         findings = {"blackIntervals": re.findall(r"black_start:[^\n]+", text)[:50], "silenceIntervals": re.findall(r"silence_(?:start|end):[^\n]+", text)[:50], "peakDbFS": peaks[-1:] or None,
                     "possibleClipping": bool(peaks and peaks[-1] != "-inf" and float(peaks[-1]) >= -0.01),
                     "interpretation": "black/silent intervals are findings, not automatic errors; cut order/content and abrupt audio edges require bounded boundary inspection"}
-        return {"passed": not failures, "failures": failures, "expectedDuration": str(expected), "actualDuration": metadata["format"]["duration"], "streams": [{k: s[k] for k in ["codec_type", "codec_name", "width", "height", "avg_frame_rate", "sample_rate", "channels"] if k in s} for s in streams], "findings": findings, "representativeCutChecks": cut_checks, "audioBoundaryChecks": edges}
+        return {"passed": not failures, "failures": failures, "expectedDuration": str(expected), "actualDuration": metadata["format"]["duration"], "streams": [{k: s[k] for k in ["codec_type", "codec_name", "width", "height", "avg_frame_rate", "sample_rate", "channels"] if k in s} for s in streams], "findings": findings, "representativeCutChecks": cut_checks, "audioBoundaryChecks": edges, "visualReference": "native composite (effects/graphics/captions) plus source/range save-reopen validation" if native_reference else "independent conformed source pixels"}
 
     def align(self, project, camera, microphone, max_lag="5"):
         p = self.project(project)
@@ -574,7 +604,7 @@ class Engine:
             raise ValueError("worker has no running queue reservation")
         try:
             args = json.loads(row["args"])
-            handler = {"ingest": self._ingest, "analyze": self._analyze, "apply": self._apply, "render": self._render, "align": self._align}[row["operation"]]
+            handler = {"ingest": self._ingest, "analyze": self._analyze, "apply": self._apply, "render": self._render, "align": self._align, "native": self._native}[row["operation"]]
             result = handler(row["project"], args, job)
             self.jobs.update(job, progress=1, state="done", result=result)
         except Exception as exc:

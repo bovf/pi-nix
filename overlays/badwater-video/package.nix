@@ -37,7 +37,7 @@
     toolPath = lib.makeBinPath [ffmpeg bash coreutils];
     inherit model;
     modelHash = "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f";
-    pipelineHash = builtins.hashString "sha256" (builtins.readFile ./engine.py + builtins.readFile ./store.py + builtins.readFile ./native.py);
+    pipelineHash = builtins.hashString "sha256" (builtins.readFile ./engine.py + builtins.readFile ./store.py + builtins.readFile ./native.py + builtins.readFile ./editing.py + builtins.readFile ./review.py + builtins.readFile ./broker.py);
     concurrency = 1;
     timeoutSeconds = 1200;
     maxAutomaticRepairAttempts = 2;
@@ -53,10 +53,11 @@ in
     installPhase = ''
       runHook preInstall
       mkdir -p "$out/lib/badwater-video" "$out/bin" "$out/share/doc/badwater-video"
-      for file in engine.py jobs.py main.py native.py store.py; do
+      for file in broker.py editing.py engine.py jobs.py main.py native.py review.py store.py; do
         install -m644 "$src/$file" "$out/lib/badwater-video/$file"
       done
       cp -r "$src/skills" "$out/skills"
+      cp -r "$src/extensions" "$out/extensions"
       install -m644 "$src/package.json" "$out/package.json"
       cp ${modelCard} "$out/share/doc/badwater-video/WHISPER-MODEL-CARD.md"
       makeWrapper ${python}/bin/python3 "$out/bin/badwater-video" \
