@@ -12,8 +12,11 @@ not an alternative EDL-only editor.
 The reusable Home Manager wiring lives in **badwater-ai**, not this producer.
 `badwater.ai.pi.videoEditing.enable = true` selects FilmCraft, SoundCraft, the
 configured CLI, local analysis model, Pi skill and optional builtin MCP entry.
-Its defaults authorize `~/Videos/Raw` for reads and XDG data `badwater/video` for
-writes. No directory enumeration or original-file writes are performed.
+Read/write roots and their activation-time creation are owned by badwater-ai;
+see its `docs/craft-video.md` for current defaults. The configured CLI and MCP
+save each project's state/native media under `writeRoot/<project-name>/`.
+Changing that root does not migrate/delete existing projects. No directory
+enumeration or original-file writes are performed.
 
 For an isolated standalone session, provide an explicit JSON config:
 
