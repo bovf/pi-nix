@@ -1,0 +1,9 @@
+{
+  "name": "badwater-video",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "pi": {
+    "skills": ["./skills"]
+  }
+}

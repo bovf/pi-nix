@@ -422,3 +422,7 @@ pi-chrome-devtools
 pi-btw
 pi-goal
 ```
+
+## Local native video editing
+
+See [engine/CLI/MCP/skill, security, examples and native tests](docs/video-editing.md). Policy and host selection remain in badwater-ai/pl-badwater; no live provider or activation is implied.

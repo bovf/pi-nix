@@ -46,67 +46,74 @@
       };
     };
 in {
-  piPackages = {
-    hunk-review = {
-      name = "hunk-review";
-      package = hunk.packages.${final.stdenv.hostPlatform.system}.hunk;
-    };
+  piPackages =
+    {
+      hunk-review = {
+        name = "hunk-review";
+        package = hunk.packages.${final.stdenv.hostPlatform.system}.hunk;
+      };
 
-    rpiv-todo = {
-      name = "rpiv-todo";
-      package = final.rpiv-todo;
-    };
+      rpiv-todo = {
+        name = "rpiv-todo";
+        package = final.rpiv-todo;
+      };
 
-    pi-archimedes = {
-      name = "pi-archimedes";
-      package = final.pi-archimedes;
-    };
+      pi-archimedes = {
+        name = "pi-archimedes";
+        package = final.pi-archimedes;
+      };
 
-    pi-subagents = {
-      name = "pi-subagents";
-      package = final.pi-subagents;
-    };
+      pi-subagents = {
+        name = "pi-subagents";
+        package = final.pi-subagents;
+      };
 
-    remote-pi = {
-      name = "remote-pi";
-      package = final.remote-pi;
-    };
+      remote-pi = {
+        name = "remote-pi";
+        package = final.remote-pi;
+      };
 
-    plannotator-pi-extension = {
-      name = "plannotator-pi-extension";
-      package = final.plannotator-pi-extension;
-    };
+      plannotator-pi-extension = {
+        name = "plannotator-pi-extension";
+        package = final.plannotator-pi-extension;
+      };
 
-    ponytail = {
-      name = "ponytail";
-      package = final.ponytail;
-    };
+      ponytail = {
+        name = "ponytail";
+        package = final.ponytail;
+      };
 
-    pi-wait-what = {
-      name = "pi-wait-what";
-      package = final.pi-wait-what;
-    };
+      pi-wait-what = {
+        name = "pi-wait-what";
+        package = final.pi-wait-what;
+      };
 
-    pi-lsp = {
-      name = "pi-lsp";
-      package = final.pi-lsp;
-    };
+      pi-lsp = {
+        name = "pi-lsp";
+        package = final.pi-lsp;
+      };
 
-    pi-chrome-devtools = {
-      name = "pi-chrome-devtools";
-      package = final.pi-chrome-devtools;
-    };
+      pi-chrome-devtools = {
+        name = "pi-chrome-devtools";
+        package = final.pi-chrome-devtools;
+      };
 
-    pi-btw = {
-      name = "pi-btw";
-      package = final.pi-btw;
-    };
+      pi-btw = {
+        name = "pi-btw";
+        package = final.pi-btw;
+      };
 
-    pi-goal = {
-      name = "pi-goal";
-      package = final.pi-goal;
+      pi-goal = {
+        name = "pi-goal";
+        package = final.pi-goal;
+      };
+    }
+    // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+      badwater-video = {
+        name = "badwater-video";
+        package = final.badwater-video;
+      };
     };
-  };
 
   pi-wait-what = mkNarumirunaExtension {
     pname = "pi-wait-what";
