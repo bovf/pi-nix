@@ -16,7 +16,7 @@ from fractions import Fraction
 from pathlib import Path
 
 VERSION = 1
-PIPELINE = "badwater-video/0.1.0"
+PIPELINE = "badwater-video/0.2.0"
 TICKS = 254016000000
 IDENTIFIER = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 MEDIA_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".wav", ".flac", ".mp3", ".m4a", ".ogg", ".aif", ".aiff", ".png", ".jpg", ".jpeg"}
@@ -192,6 +192,18 @@ class Policy:
             child.stderr.close()
 
 
+def output_settings(out):
+    if set(out) - {"width", "height", "fps", "aspect"}:
+        raise ValueError("unknown output setting")
+    w, h = out["width"], out["height"]
+    if type(w) is not int or type(h) is not int or not 16 <= w <= 3840 or not 16 <= h <= 2160 or w % 2 or h % 2:
+        raise ValueError("output must have even dimensions, 16..3840 by 16..2160")
+    fps = rational(out["fps"])
+    if not 1 <= fps <= 60 or (out.get("aspect") and Fraction(w, h) != rational(out["aspect"])):
+        raise ValueError("frame rate/aspect ratio is invalid or inconsistent")
+    return fps
+
+
 class Project:
     def __init__(self, policy, name, create=False):
         self.policy = policy
@@ -244,31 +256,36 @@ class Project:
         identifier(asset_id)
         with self.db() as db:
             row = db.execute("SELECT * FROM assets WHERE id=?", (asset_id,)).fetchone()
+            generated = False
+            if row is None and db.execute("SELECT 1 FROM sqlite_master WHERE name='generated_assets'").fetchone():
+                row = db.execute("SELECT * FROM generated_assets WHERE id=?", (asset_id,)).fetchone()
+                generated = row is not None
         if row is None:
             raise ValueError("asset not indexed in this project")
         result = dict(row)
-        p = self.policy.read(result["path"], raw=True)
+        p = self.policy.read(result["path"], raw=not generated)
+        if generated and not p.is_relative_to(self.root / "derived"):
+            raise ValueError("generated media must remain inside this project's derived registry")
+        result["kind"] = "generated" if generated else "original"
         s = p.stat()
+        if generated and s.st_nlink != 1:
+            raise ValueError("generated asset must not be hardlinked")
         if s.st_size != result["size"] or s.st_mtime_ns != result["mtime_ns"] or (verify and digest(p) != result["hash"]):
             raise ValueError("asset changed; ingest again to assign its new content identity")
         result["metadata"] = json.loads(result["metadata"])
         return result
 
     def validate(self, plan):
+        if type(plan.get("version")) is int and plan["version"] == 2:
+            import composition
+            return composition.validate(self, plan)
         import editing
         allowed = {"version", "output", "clips", "constraints", "audio", "notes", "nativeCommands"}
         if set(plan) - allowed or type(plan.get("version")) is not int or plan.get("version") != 1:
             raise ValueError("unsupported plan version/fields")
         editing.validate(plan.get("nativeCommands", []))
         out = plan["output"]
-        if set(out) - {"width", "height", "fps", "aspect"}:
-            raise ValueError("unknown output setting")
-        w, h = out["width"], out["height"]
-        if type(w) is not int or type(h) is not int or not 16 <= w <= 3840 or not 16 <= h <= 2160 or w % 2 or h % 2:
-            raise ValueError("output must have even dimensions, 16..3840 by 16..2160")
-        fps = rational(out["fps"])
-        if not 1 <= fps <= 60 or (out.get("aspect") and Fraction(w, h) != rational(out["aspect"])):
-            raise ValueError("frame rate/aspect ratio is invalid or inconsistent")
+        fps = output_settings(out)
         clips = plan["clips"]
         if not isinstance(clips, list) or not 1 <= len(clips) <= 200:
             raise ValueError("a plan requires 1..200 cuts")

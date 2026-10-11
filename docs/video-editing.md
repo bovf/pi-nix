@@ -29,7 +29,7 @@ For an isolated standalone session, provide an explicit JSON config:
 
 Replace placeholders with evaluated **producer outputs**, never PATH guesses.
 Film/Sound must be the verified native revisions; see artcraft-nix's capability
-matrix. Whisper tiny.en weights and MIT model card are immutable Nix outputs,
+matrix. Whisper tiny.en and optional small.en weights plus the MIT model card are immutable Nix outputs,
 SHA-256 checked before ASR, with no first-use download or GPU dependency.
 
 ```sh
@@ -131,7 +131,7 @@ may need human review. Optional nativeCommands add in-document effects/graphics/
 
 The packaged read-only `video_model_capabilities` tool reports the active Pi model, without authentication/files/network access or changing provider/model settings. Visual review pages the whole source every15 seconds, persists bounded model observations and refines candidates. Default240 image attachments per asset includes repeated frames; increasing it requires approval. Thirty-minute initial coverage is120 samples, not continuous understanding. Notes are untrusted inferences and their text is withheld after consent revocation.
 
-`native_catalog`, `native_batch` and `native_result_page` federate selected verified native apps through this wrapper with job-scoped per-app writes, individual approved read-only inputs and bounded replies. SoundCraft accepts explicit selected cuts<=120s, not full recordings. General native workspaces are not timeline revisions. ArtCraft remains install-only. Automatic music/generative assets, retiming/multicamera/drift-aware plans, third-party timeline export and semantic search/diarization remain unsupported.
+`native_catalog`, `native_batch` and `native_result_page` federate selected verified native apps through this wrapper with job-scoped per-app writes, individual approved read-only inputs and bounded replies. SoundCraft accepts explicit selected cuts<=120s, not full recordings. General native workspaces are not timeline revisions. ArtCraft remains install-only. Plan-v2 adds declarative native tracks/retiming/reframing, selected-stream audio/music/SFX mixing, word-following EffectCraft captions, transparent native effect handoff, beat anchors, source-backed context/idea indexing and resumable short batches. Read `overlays/badwater-video/skills/video-editing/references/editorial.md` for schemas, approval and limits. Automatic music acquisition/generative assets, inferred clock drift/automatic speaker identity, vector embeddings and third-party timeline export remain unsupported.
 
 Whisper weights:77,704,715 bytes. Earlier measured full engine closure:1,429,156,536
 bytes (includes reused dependencies, not new download size or workload RSS). CPU

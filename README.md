@@ -426,3 +426,7 @@ pi-goal
 ## Local native video editing
 
 See [engine/CLI/MCP/skill, security, examples and native tests](docs/video-editing.md). Policy and host selection remain in badwater-ai/pl-badwater; no live provider or activation is implied.
+
+### Editorial stack
+
+The runtime0.2 adds word-time/separate-stream/windowed evidence, source-backed idea/moment indexing, declarative plan-v2 layers/reframing/retiming/audio tracks, native EffectCraft word animations/transparent handoff, beat-anchored Sound mixes and resumable distinct short batches. V1 remains supported; final approval and model-sharing remain separate user decisions. See [the schema/workflow](overlays/badwater-video/skills/video-editing/references/editorial.md). Optional immutable MIT small.en weights are487,614,201 bytes, SHA256 `c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d`, at the same pinned Whisper model revision; tiny.en stays default. A clear synthetic two-window statement measured tiny.en1.86s/WER0.036 vs small.en7.80s/WER0; this is not a noisy-gameplay benchmark or guaranteed quality gain.

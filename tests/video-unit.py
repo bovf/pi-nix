@@ -74,7 +74,7 @@ class StateContracts(unittest.TestCase):
 
     def test_plan_rejections(self):
         cases = []
-        for version in [True, 1.0, "1", None, 2]:
+        for version in [True, 1.0, "1", None, 3]:
             p = deepcopy(self.plan); p["version"] = version; cases.append(p)
         p = deepcopy(self.plan); p["clips"][0]["out"] = "5"; cases.append(p)
         p = deepcopy(self.plan); p["clips"][0]["in"] = "-1"; cases.append(p)

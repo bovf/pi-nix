@@ -1,6 +1,6 @@
 # CLI and MCP workflow
 
-The Home Manager wrapper supplies the declared read roots and separate derived write root. Otherwise supply `--config FILE` with `readRoots`, `writeRoot` and exact installed native `filmcraft`/`soundcraft` CLI paths. The package supplies pinned managed FFmpeg, CPU Whisper/model, Bash, Coreutils, Python/MCP and Bubblewrap. Use only Linux for this first slice.
+The Home Manager wrapper supplies the declared read roots and separate derived write root. Otherwise supply `--config FILE` with `readRoots`, `writeRoot` and exact installed native `filmcraft`/`soundcraft` CLI paths. The package supplies pinned managed FFmpeg, CPU Whisper/model, Bash, Coreutils, Python/MCP and Bubblewrap. Use Linux. For the editorial stack, read `editorial.md`; the following is the backward-compatible v1 path.
 
 ```sh
 badwater-video project create tutorial
@@ -55,4 +55,4 @@ Optional plan `nativeCommands` is an array of at most100 `{id,params}` entries/6
 
 `native_batch` also routes to any selected verified Craft app in a private per-job application workspace. Each of at most50 calls/64KiB is `{tool,arguments}`. References: `{"$workspace":"output.png"}`, `{"$asset":"INGESTED_ID"}`, `{"$audioCut":{"asset":"MIC_ID","in":"3","out":"8"}}`, or `{"$result":0,"field":["imported",0,"clip"]}`. Raw inputs are individual read-only approved asset files, not folders; Sound rejects whole-recording imports. Replies/images remain local; bounded text pages require sharing consent. Workspace batches do not silently become wrapper timeline revisions; use `timeline_apply.nativeCommands` for those edits. CLI parity: `native {catalog,batch,result}`. ArtCraft remains install-only/no verified native MCP.
 
-Automatic music selection, generative assets, retiming/multicamera/drift-aware plans, diarization/semantic search and cross-editor timeline exports remain unsupported. A model can propose context-based edits from sampled evidence, but native/API declarations and synthetic tests do not certify live editorial quality or continuous audiovisual understanding.
+Plan-v2 now provides explicit native retiming/layers/framing, audio/music/SFX tracks, animated word captions, native EffectCraft handoff, beat anchors and distinct deliverable batches; see `editorial.md`. Automatic music acquisition, generative assets, inferred clock drift/automatic mixed-track speaker identity, embeddings and cross-editor timeline export remain unsupported. A model can propose context-based edits from sampled evidence, but native/API declarations and synthetic tests do not certify live editorial quality or continuous audiovisual understanding.

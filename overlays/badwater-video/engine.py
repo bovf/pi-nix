@@ -11,6 +11,9 @@ from jobs import Jobs
 import review
 import editing
 import broker
+import evidence
+import editorial
+import composition
 from native import NativeMCP
 from store import (MEDIA_EXTENSIONS, PIPELINE, TICKS, Policy, Project, atomic_json,
                    digest, identifier, json_text, load_json, no_links, publish, rational)
@@ -37,8 +40,8 @@ class Engine:
             db.execute("UPDATE info SET value=? WHERE key='remoteConsent'", (json_text(allow_remote),))
         return {"project": project, "remoteConsent": allow_remote, "scope": "frames and transcript snippets sent through Pi to its configured model; no direct provider client"}
 
-    def probe(self, path):
-        self.policy.read(path, raw=True)
+    def probe(self, path, derived=False):
+        self.policy.read(path, raw=not derived)
         stdout, _ = self.policy.run([self.config["ffprobe"], "-v", "error", "-show_entries",
             "format=duration,format_name:stream=index,codec_type,codec_name,width,height,avg_frame_rate,r_frame_rate,time_base,duration_ts,duration,sample_rate,channels,start_time",
             "-of", "json", str(path)], timeout=30)
@@ -123,6 +126,17 @@ class Engine:
             cached = db.execute("SELECT body FROM observations WHERE asset=? AND cache_key=?", (asset, key)).fetchone()
         return {**self.jobs.submit(project, "analyze", {"asset": asset, "options": options}), "cachedHint": cached is not None, "cacheKey": key}
 
+    def inspect_batch(self, project, asset, times, share_with_model=False):
+        if type(share_with_model) is not bool or not isinstance(times, list) or not 1 <= len(times) <= 6:
+            raise ValueError("frame batches require 1..6 timestamps and a literal boolean sharing flag")
+        p = self.project(project); p.asset(asset, verify=True)
+        for when in times:
+            if not 0 <= rational(when) < rational(p.asset(asset)["metadata"]["duration"]):
+                raise ValueError("frame batch timestamp is outside the source")
+        result = [self.inspect(project, asset, when, share_with_model, _identity_verified=True) for when in times]
+        p.asset(asset, verify=True)
+        return result
+
     def _frame(self, p, asset, when, destination):
         a = p.asset(asset)
         t = rational(when)
@@ -137,9 +151,9 @@ class Engine:
         return {"asset": asset, "requestedSeconds": str(t), "decodedPtsSeconds": pts.group(1).decode() if pts else None,
                 "path": str(destination), "hash": digest(destination), "provenance": "FFmpeg decoded frame, not a semantic event label"}
 
-    def inspect(self, project, asset, when, share_with_model=False, local=False, refresh=False):
+    def inspect(self, project, asset, when, share_with_model=False, local=False, refresh=False, _identity_verified=False):
         p = self.project(project)
-        p.asset(asset, verify=True)
+        p.asset(asset, verify=not _identity_verified)
         if share_with_model and not p.summary()["remoteConsent"] and not local:
             raise ValueError("obtain explicit permission and set project privacy before sending footage-derived frames to Pi's model")
         key = hashlib.sha256((asset + ":" + str(rational(when)) + ":" + self.config["ffmpeg"] + ":" + self.config["pipelineHash"]).encode()).hexdigest()
@@ -288,7 +302,10 @@ class Engine:
                 p.asset(row["asset"])
                 identity = (row["asset"], row["cache_key"])
                 if identity not in verified:
-                    self.analysis_body(p, *identity)
+                    evidence.schema(p)
+                    with p.db() as db: indexed = db.execute("SELECT 1 FROM editorial_evidence WHERE asset=? AND cache_key=?", identity).fetchone()
+                    if indexed: evidence.read(self, project, *identity)
+                    else: self.analysis_body(p, *identity)
                     verified.add(identity)
                 current.append(row)
             except (ValueError, OSError, KeyError, TypeError):
@@ -296,6 +313,8 @@ class Engine:
         permitted = local or p.summary()["remoteConsent"]
         if not permitted:
             current = [{k: v for k, v in r.items() if k != "text"} for r in current]
+        if len(json_text(current).encode()) > 8000:
+            raise ValueError("transcript search page exceeds 8 KiB; request fewer matches")
         return {"matches": current, "searchKind": "literal transcript phrase (not multimodal semantic search)", "transcriptTextWithheldUntilConsent": not permitted}
 
     def observations(self, project, asset, cache_key, start="0", end="30", limit=10, local=False):
@@ -331,8 +350,11 @@ class Engine:
     def _native(self, project, args, job):
         return broker.run(self, project, args, job)
 
-    def validate(self, project, plan):
-        return self.project(project).validate(plan)
+    def validate(self, project, plan, local=False):
+        p = self.project(project); result = p.validate(plan)
+        if not local and not p.summary()["remoteConsent"] and plan.get("captions", {}).get("fromEvidence"):
+            result = {**result, "captionWords": [{k:v for k,v in w.items() if k != "text"} for w in result["captionWords"]], "privacy": "ASR caption text withheld until explicit sharing permission"}
+        return result
 
     def apply(self, project, plan):
         self.validate(project, plan)
@@ -364,6 +386,8 @@ class Engine:
         return output, {"backend": "SoundCraft native clip gain and bounce", "gainDb": gain, "targetLufs": -16, "peakCeilingDb": -1, "measured": measured, "scope": "mono speech cut; no automatic mixing, music or interpretation"}
 
     def _apply(self, project, args, job):
+        if args["plan"].get("version") == 2:
+            return composition.apply(self, project, args["plan"], job)
         p = self.project(project)
         plan = args["plan"]
         validation = p.validate(plan)
@@ -451,6 +475,8 @@ class Engine:
         path = self.policy.read(result["native_path"])
         if digest(path) != result["native_hash"]:
             raise ValueError("native project was modified outside this revision; import/edit it explicitly rather than silently overwriting history")
+        if result["plan"].get("version") == 2:
+            composition.dependencies(self.project(project), result["id"])
         return result
 
     def history(self, project):
@@ -474,7 +500,7 @@ class Engine:
         p = self.project(project)
         r = self.revision(project, args.get("revision"))
         validation = p.validate(r["plan"])
-        for asset in {r["asset"] for r in validation["ranges"]} | ({validation["audio"]["microphone"]} if "microphone" in validation["audio"] else set()):
+        for asset in {r["asset"] for r in validation["ranges"]} | {r["asset"] for r in validation.get("audioTracks", [])} | ({validation["audio"]["microphone"]} if "microphone" in validation["audio"] else set()):
             p.asset(asset, verify=True)
         work = self.policy.write(p.root / ".work" / job / "render.mp4").parent
         output = work / "render.mp4"
@@ -487,10 +513,11 @@ class Engine:
             argv += ["--start", "0", "--end", str(float(expected))]
         stdout, stderr = self.policy.run(argv, work, timeout=self.config.get("timeoutSeconds", 1200))
         atomic_json(work / "native-export-log.json", {"stdout": stdout[-8000:].decode("utf-8", "replace"), "stderr": stderr[-8000:].decode("utf-8", "replace")})
-        qc = self.qc(p, output, expected, validation, r["native_path"] if r["plan"].get("nativeCommands") else None)
+        qc = self.qc(p, output, expected, validation, r["native_path"] if r["plan"].get("nativeCommands") or r["plan"].get("version") == 2 else None)
         atomic_json(work / "qc.json", qc)
         if not qc["passed"]:
             raise ValueError("deterministic export QC failed; prior output preserved. Inspect the job's qc.json and repair the edit explicitly.")
+        if r["plan"].get("version") == 2: composition.dependencies(p, r["id"])
         target = self.policy.write(args["output"])
         publish(output, target, replace=args["replace"])
         return {"video": str(target), "revision": r["id"], "nativeProject": r["native_path"], "plan": str(Path(r["native_path"]).with_name("plan.json")),
@@ -529,7 +556,7 @@ class Engine:
             if b <= a:
                 continue
             position = (a + b) / 2
-            source_time = rational(cut["in"]) + position - a
+            source_time = rational(cut["in"]) + (position - a) * rational(cut.get("speed", "1"))
             source = p.asset(cut["asset"])
             dimensions = validation["output"]
             conform = f"scale={dimensions['width']}:{dimensions['height']}:force_original_aspect_ratio=decrease,pad={dimensions['width']}:{dimensions['height']}:(ow-iw)/2:(oh-ih)/2,scale=16:16"
@@ -556,7 +583,16 @@ class Engine:
         findings = {"blackIntervals": re.findall(r"black_start:[^\n]+", text)[:50], "silenceIntervals": re.findall(r"silence_(?:start|end):[^\n]+", text)[:50], "peakDbFS": peaks[-1:] or None,
                     "possibleClipping": bool(peaks and peaks[-1] != "-inf" and float(peaks[-1]) >= -0.01),
                     "interpretation": "black/silent intervals are findings, not automatic errors; cut order/content and abrupt audio edges require bounded boundary inspection"}
-        return {"passed": not failures, "failures": failures, "expectedDuration": str(expected), "actualDuration": metadata["format"]["duration"], "streams": [{k: s[k] for k in ["codec_type", "codec_name", "width", "height", "avg_frame_rate", "sample_rate", "channels"] if k in s} for s in streams], "findings": findings, "representativeCutChecks": cut_checks, "audioBoundaryChecks": edges, "visualReference": "native composite (effects/graphics/captions) plus source/range save-reopen validation" if native_reference else "independent conformed source pixels"}
+        loudness = None
+        if validation.get("version") == 2 and audio:
+            _, measured = self.policy.run([self.config["ffmpeg"], "-nostdin", "-v", "info", "-i", str(output), "-map", "0:a:0", "-vn", "-af", "loudnorm=I=-16:TP=-1:LRA=11:print_format=json", "-f", "null", "-"], timeout=300)
+            records = re.findall(r'\{\s*"input_i"[^}]+\}', measured.decode("utf-8", "strict"))
+            if not records: failures.append("final audio loudness/true-peak measurement missing")
+            else:
+                meter = json.loads(records[-1]); peak = float(meter["input_tp"]); integrated = float(meter["input_i"])
+                loudness = {"integratedLufs": integrated if math.isfinite(integrated) else None, "truePeakDb": peak if math.isfinite(peak) else None, "scope": "local final-audio inspection; silence is reported, not fabricated"}
+                if math.isfinite(peak) and peak > .3: failures.append("final audio true peak exceeds 0.3 dBFS; reduce native gain/mix and listen again")
+        return {"passed": not failures, "failures": failures, "audioLoudness": loudness, "expectedDuration": str(expected), "actualDuration": metadata["format"]["duration"], "streams": [{k: s[k] for k in ["codec_type", "codec_name", "width", "height", "avg_frame_rate", "sample_rate", "channels"] if k in s} for s in streams], "findings": findings, "representativeCutChecks": cut_checks, "audioBoundaryChecks": edges, "visualReference": "native composite (effects/graphics/captions) plus source/range save-reopen validation" if native_reference else "independent conformed source pixels"}
 
     def align(self, project, camera, microphone, max_lag="5"):
         p = self.project(project)
@@ -604,7 +640,7 @@ class Engine:
             raise ValueError("worker has no running queue reservation")
         try:
             args = json.loads(row["args"])
-            handler = {"ingest": self._ingest, "analyze": self._analyze, "apply": self._apply, "render": self._render, "align": self._align, "native": self._native}[row["operation"]]
+            handler = {"ingest": self._ingest, "analyze": self._analyze, "apply": self._apply, "render": self._render, "align": self._align, "native": self._native, "evidence": lambda p, a, j: evidence.run(self, p, a, j), "deliverables": lambda p, a, j: editorial.batch_run(self, p, a, j)}[row["operation"]]
             result = handler(row["project"], args, job)
             self.jobs.update(job, progress=1, state="done", result=result)
         except Exception as exc:
