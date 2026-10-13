@@ -62,6 +62,15 @@ point at those exact modules. Public package/overlay/registry names are unchange
 Extensions are built Nix-natively from npm tarballs, managed lockfiles, or pinned
 GitHub sources; no runtime/global npm installation is needed.
 
+## OpenAI subscription maximum context
+
+The core package exports reviewed `openaiCodexContextWindows` metadata for
+`badwater-ai`'s opt-in `badwater.ai.pi.openai.maxContext` policy. It does not
+patch the core/provider or change default limits for other consumers.
+[Audited models, retirement caveats and native regression](docs/openai-context.md).
+Run `nix build .#checks.x86_64-linux.openai-context --no-link`; this is offline
+metadata/SDK/native-child acceptance, not authenticated 1M backend acceptance.
+
 ## Pi package registry
 
 The overlay exposes a registry for declarative Home Manager config:

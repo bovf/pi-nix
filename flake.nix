@@ -72,8 +72,21 @@
       });
 
     # This package runs the footer checks during its build, not only via flake check.
-    checks = forAllSystems (system:
+    checks = forAllSystems (system: let
+      pkgs = nixpkgs.legacyPackages.${system};
+      core = self.packages.${system}.pi-coding-agent;
+    in
       {
+        openai-context =
+          pkgs.runCommand "pi-openai-context-tests" {
+            nativeBuildInputs = [core.nodejs pkgs.coreutils];
+          } ''
+            export HOME="$TMPDIR/home" PI_OFFLINE=1
+            mkdir -p "$HOME" "$TMPDIR/work"
+            cd "$TMPDIR/work"
+            timeout 120 node ${./tests/openai-context.mjs} ${core} ${self.packages.${system}.pi-subagents} ${./overlays/pi-coding-agent/openai-codex-context.json}
+            touch "$out"
+          '';
         archimedes-footer = self.packages.${system}.pi-archimedes;
       }
       // nixpkgs.lib.optionalAttrs (system != "aarch64-darwin") {

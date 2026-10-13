@@ -33,6 +33,7 @@ in {
       (old.passthru or {})
       // {
         inherit workspacePackages;
+        openaiCodexContextWindows = builtins.fromJSON (builtins.readFile ./openai-codex-context.json);
         nodejs = prev.nodejs_22;
       };
     postInstall =
