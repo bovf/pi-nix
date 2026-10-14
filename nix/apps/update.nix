@@ -7,10 +7,6 @@
       text = ''
         build_roots=$(mktemp -d "''${TMPDIR:-/tmp}/pi-nix-update.XXXXXX")
         echo "Keeping update build roots in $build_roots"
-        nix flake update
-        # Also refresh transitive inputs instead of retaining Hunk's bundled lock pins.
-        nix flake update hunk/bun2nix hunk/systems hunk/bun2nix/flake-parts hunk/bun2nix/treefmt-nix
-
         npm_meta() {
           curl -fsSL "https://registry.npmjs.org/$1"
         }
@@ -30,6 +26,29 @@
             }
             jq -n --arg tag "$tag" '{tag_name: $tag}'
           fi
+        }
+
+        update_release_input() {
+          local name="$1" repo="$2" release tag
+          release=$(github_release "$repo")
+          tag=$(echo "$release" | jq -er '.tag_name')
+          [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Expected stable release tag for $repo" >&2
+            exit 1
+          }
+          python3 - "$repo" "$tag" <<'PY'
+        import re
+        import sys
+        from pathlib import Path
+
+        repo, tag = sys.argv[1:]
+        path = Path("flake.nix")
+        text, count = re.subn(rf'url = "github:{re.escape(repo)}(?:/[^"]+)?";', f'url = "github:{repo}/{tag}";', path.read_text())
+        if count != 1:
+            raise SystemExit(f"expected one release input URL for {repo}, got {count}")
+        path.write_text(text)
+        PY
+          echo "$name: $tag"
         }
 
         resolve_build_hash() {
@@ -203,6 +222,12 @@
 
           resolve_build_hash "$attr" "overlays/pi-packages/default.nix" "npmDepsHash"
         }
+
+        update_release_input "pi-upstream" "earendil-works/pi"
+        update_release_input "hunk" "modem-dev/hunk"
+        nix flake update
+        # Reconcile only the existing Hunk dependency paths under the selected stable release.
+        nix flake update hunk/bun2nix hunk/systems hunk/bun2nix/flake-parts hunk/bun2nix/treefmt-nix
 
         update_simple_npm "pi-vim" "pi-vim" "overlays/pi-vim/default.nix"
         update_pi_package "rpiv-todo" "@juicesharp/rpiv-todo" "pkgs/rpiv-todo"

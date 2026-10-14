@@ -165,13 +165,13 @@ in {
 
   ponytail = prev.stdenvNoCC.mkDerivation {
     pname = "ponytail";
-    version = "5.0.0";
+    version = "5.2.0";
 
     src = prev.fetchFromGitHub {
       owner = "DietrichGebert";
       repo = "ponytail";
-      tag = "v5.0.0";
-      hash = "sha256-U+TGSju2VBYHqaWZckf/QQMZXZ15KhOREfpA5EN/Deo=";
+      tag = "v5.2.0";
+      hash = "sha256-3GopEvTySUvo0ghGz4CF6xbN7x3kbB/IHEY7Dwr4dls=";
     };
 
     installPhase = ''
@@ -191,12 +191,8 @@ in {
 
   pi-archimedes = let
     pi = final.pi-coding-agent;
-    footerCheck = probe: let
+    footerCheck = let
       success = "PASS: actual packaged footer, real Git ahead=1, Pi dark/light themes, 28 renders; no prompt";
-      expected =
-        if probe
-        then "EXPECTED: unpatched footer still fails with Unknown theme color: info; compatibility patch required"
-        else success;
     in ''
       fixture=$(mktemp -d "$TMPDIR/archimedes-footer.XXXXXXXX")
       mkdir "$fixture/home" "$fixture/tmp"
@@ -208,28 +204,11 @@ in {
           GIT_CONFIG_NOSYSTEM=1 PI_OFFLINE=1 \
           ${prev.coreutils}/bin/timeout --kill-after=5s 60s \
           ${pi.nodejs}/bin/node ${../../tests/archimedes-footer.mjs} \
-          ${pi} "$out" ${prev.lib.optionalString probe "--probe-unpatched"}
+          ${pi} "$out"
       ) > "$fixture/stdout" 2> "$fixture/stderr" || status=$?
-      ${prev.lib.optionalString probe ''
-        if [ "$status" -eq 0 ] && [ ! -s "$fixture/stderr" ] && grep -Fxq '${success}' "$fixture/stdout"; then
-          cat "$fixture/stdout" >&2
-          echo "ERROR: PI_ARCHIMEDES_PATCH_OBSOLETE: the unpatched footer already renders with Pi ${pi.version}." >&2
-          echo "Pi ${pi.version}: ${pi}; Archimedes: $out." >&2
-          echo "Retire the info-to-accent compatibility patch and its unpatched-failure probe; retain the successful-render check." >&2
-          exit 1
-        fi
-      ''}
-      if [ "$status" -ne ${
-        if probe
-        then "42"
-        else "0"
-      } ] || [ -s "$fixture/stderr" ] || ! grep -Fxq '${expected}' "$fixture/stdout"; then
+      if [ "$status" -ne 0 ] || [ -s "$fixture/stderr" ] || ! grep -Fxq '${success}' "$fixture/stdout"; then
         cat "$fixture/stdout" "$fixture/stderr" >&2
-        echo "ERROR: PI_ARCHIMEDES_${
-        if probe
-        then "UPSTREAM_PROBE_FAILED"
-        else "FOOTER_REGRESSION"
-      }: refusing Archimedes and dependent generation builds." >&2
+        echo "ERROR: PI_ARCHIMEDES_FOOTER_REGRESSION: refusing Archimedes and dependent generation builds." >&2
         echo "Pi ${pi.version}: ${pi}; Archimedes: $out; test exit status: $status." >&2
         echo "Check deadline: 60 seconds (timeout exits 124; forced kill exits 137)." >&2
         echo "Inspect the footer/theme/loader diagnostics above; do not bypass this compatibility check." >&2
@@ -241,15 +220,15 @@ in {
   in
     prev.buildNpmPackage rec {
       pname = "pi-archimedes";
-      version = "2.9.3";
+      version = "2.10.4";
 
       src = prev.fetchurl {
         url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
-        hash = "sha512-pOZIub4E73VzWtTaa+e95wnZKYimGCjgggOQPLS3u81Tgq+RAwuWrx4TzqdZKX2HXg0zlxITeEBVBJV0y2o0BQ==";
+        hash = "sha512-3bJqgR0gZq2/nBa23C5iqC6v3zNPbXuQx0OfGWoOgWiD/ySZEC0RJFABU0rJvlq1yfe0JzzkXjIAsuVZnL580A==";
       };
 
       sourceRoot = "package";
-      npmDepsHash = "sha256-r9ah/H+BaRmSQap0EXGATRl7DvCo2UVlPgtnACh6vw0=";
+      npmDepsHash = "sha256-9evCIgd77dWRGqMP7u34XNbMHwY2dEFBVIdvz81fYrk=";
       dontNpmBuild = true;
       npmFlags = ["--legacy-peer-deps" "--omit=dev"];
       npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -263,12 +242,7 @@ in {
         substituteInPlace "$out/src/index.ts" \
           --replace-fail 'isPluginEnabled("image-paste")' 'false /* Pi core owns clipboard image handling. */' \
           --replace-fail 'isPluginEnabled("subagent")' 'false /* pi-subagents owns delegation. */'
-        # Fail if either upstream has fixed the bug: never carry an obsolete patch silently.
-        ${footerCheck true}
-        # Pi has no "info" theme color; keep the Git-ahead indicator renderable.
-        substituteInPlace "$out/node_modules/@pi-archimedes/footer/src/utils/icons.ts" \
-          --replace-fail '"dim" | "info">' '"dim" | "accent">' \
-          --replace-fail 'ahead: "info"' 'ahead: "accent"'
+        # Archimedes 2.10 fixes the footer color upstream; no compatibility patch.
       '';
 
       installPhase = ''
@@ -282,7 +256,7 @@ in {
       doInstallCheck = true;
       installCheckPhase = ''
         runHook preInstallCheck
-        ${footerCheck false}
+        ${footerCheck}
         runHook postInstallCheck
       '';
 
@@ -296,15 +270,15 @@ in {
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";
-    version = "2.12.0";
+    version = "2.13.8";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@juicesharp/rpiv-todo/-/rpiv-todo-${version}.tgz";
-      hash = "sha512-bTILerGqMGrWMUkahHzXTuYa4iPkRX/LTl12HPppcCdPg7pGwrC1K7/ZtPfp7Xi4cXzqEoyZpeUM6IA8y5gtEQ==";
+      hash = "sha512-PY+vo3fDZdccNwKXyDtdR4fOqiZr1NYph/UaS49mr1DLNn2lpirtWRc1577uS5/3r5NkZVM3owWdsy6ewxmPCw==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-iUVVn1V/IDeAPQ4GkaXnWG0iUL95kHxu+BeaGg6Q7+A=";
+    npmDepsHash = "sha256-eMaJt9Ov85aztb2enjhpR4+TlSE2aPXBCEndpfvHAzo=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
@@ -331,15 +305,15 @@ in {
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.28.8";
+    version = "0.28.19";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-SvRRvyvexkmpZF/nQ2UlewNkvG7EmFnEqUG/3+cg3wz6wH9svY0EDHak4b/C+ohr+pbJiHDhI7czSZKUIOuGoA==";
+      hash = "sha512-fBcRoQc64PBOS7Ss12XQsKfu720RT4sByIqsvzjDIU5Rjf01lf666ui8rg1o/aGlRZrvye4S3HUnMCN3myeWaA==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-eP2jUZUwCJMuQ/x2Xj0lzoldtsH72Lq9LoVgN0NHoN4=";
+    npmDepsHash = "sha256-QSdhypeVdbX2xF09BJusRGlLMjYdj32ZcHfE5i7KIUA=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -367,15 +341,15 @@ in {
 
   pi-subagents = prev.buildNpmPackage rec {
     pname = "pi-subagents";
-    version = "0.76.1";
+    version = "0.78.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-subagents/-/pi-subagents-${version}.tgz";
-      hash = "sha512-DTHVUUyLx5KfwikpSQF4sWIKaazbxanAoKd8v4ZGt9OqLM2xNQ79BrPHjaqOARipoUb0kZIKyEYwTPItPqYq1g==";
+      hash = "sha512-AsOvPL1xaVFV4bqIlheQKNI2LmAoiAKTPXXxi39/BsWJTdMJIqAkZJ3iLi6bTsh2PZHG7Ur08b7VJOtgAMIAig==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-zmO+nquvr/4a0yBXmwTSEt0pIp5KaABtt8cf1wqMj+A=";
+    npmDepsHash = "sha256-rkRNOV4zPUznLUMGM4x7tilZfL2cWtyTmHlKeoWCGEY=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -411,7 +385,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-x+ZNZFfW7HLBQtC/lkhyeWWj8OmxIYqmwYdWqSPeW5c=";
+    npmDepsHash = "sha256-C/etT+bxrLizy/hFLkCOJKSpadE65dmPXlzZwHkfaL8=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];

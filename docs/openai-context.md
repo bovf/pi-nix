@@ -5,7 +5,8 @@
 It is packaging metadata, not a changed core catalog or custom provider.
 `badwater-ai` consumes it only when `badwater.ai.pi.openai.maxContext = true`.
 
-Audit: 2026-10-13. Pi 1.1.0's packaged and current public
+Audit: 2026-10-13, rechecked with Pi 1.2.0 during the 2026-10-14 full update.
+The packaged and current public
 [OpenAI-Codex catalog](https://pi.dev/api/models/providers/openai-codex?types=chat)
 list nine chat IDs. Eight official model specification cards explicitly declare
 1,050,000 context tokens and 128,000 maximum output tokens:

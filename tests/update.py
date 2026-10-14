@@ -4,10 +4,12 @@
 Run: python3 tests/update.py (bash and jq on PATH).
 """
 import json
-from pathlib import Path
+import os
+import re
 import subprocess
 import tempfile
 import textwrap
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 updater = (ROOT / "nix/apps/update.nix").read_text()
@@ -20,7 +22,10 @@ def shell_section(start, end):
 # Core source, catalog and dependency hashes are owned by the locked upstream flake.
 flake = (ROOT / "flake.nix").read_text()
 core = (ROOT / "overlays/pi-coding-agent/default.nix").read_text()
-assert 'url = "github:earendil-works/pi/stable";' in flake
+
+assert re.search(r'url = "github:earendil-works/pi/v[0-9]+\.[0-9]+\.[0-9]+";', flake)
+assert 'update_release_input "pi-upstream" "earendil-works/pi"' in updater
+assert 'update_release_input "hunk" "modem-dev/hunk"' in updater
 assert 'inputs.nixpkgs.follows = "nixpkgs";' in flake.split('pi-upstream = {', 1)[1].split('};', 1)[0]
 assert 'update_pi_core' not in updater
 assert 'nix flake update' in updater
@@ -28,7 +33,8 @@ assert 'prev.callPackage "${pi-upstream}/nix/package.nix"' in core
 assert 'attrs.pname == "pi-workspace-packages"' in core
 assert 'prev.lib.strings.addContextFrom lock' in core
 assert all(field not in core for field in ['npmDepsHash', 'modelData', 'buildNpmPackage'])
-assert 'for workspace in durable protocol client server;' in core
+assert 'for workspace in durable chord;' in core
+assert all(f'packages/{name}' not in core for name in ['protocol', 'client', 'server'])
 
 with tempfile.TemporaryDirectory() as directory:
     tmp = Path(directory)
@@ -56,7 +62,7 @@ with tempfile.TemporaryDirectory() as directory:
         nix() { test "$*" = "build .#fixture --out-link $build_roots/fixture"; }
     ''' + rooted_build + '\nresolve_build_hash fixture unused unused\n',
         "test", str(tmp)], check=True)
-release = "github_release() {" + shell_section("        github_release() {", "        resolve_build_hash() {")
+release = "github_release() {" + shell_section("        github_release() {", "        update_release_input() {")
 subprocess.run(["bash", "-euc", '''
     unset GITHUB_TOKEN GH_TOKEN
     curl() {
@@ -79,6 +85,22 @@ subprocess.run(["bash", "-euc", '''
       fi
     done
 '''], check=True)
+# Stable release URLs must advance before locking, without touching unrelated inputs.
+release_input = "update_release_input() {" + shell_section("        update_release_input() {", "        resolve_build_hash() {")
+with tempfile.TemporaryDirectory() as directory:
+    tmp = Path(directory)
+    flake_file = tmp / "flake.nix"
+    original = 'pi-upstream.url = "github:earendil-works/pi/v1.1.0"; hunk.url = "github:modem-dev/hunk/v0.22.0"; other.url = "github:owner/other";\n'
+    # Keep shell interpolation and authentication out of this offline fixture.
+    for tag, succeeds in [("v1.2.0", True), ("v1.2.0-beta.1", False), ("main", False)]:
+        flake_file.write_text(original)
+        result = subprocess.run(["bash", "-euc", 'github_release() { printf \'{\"tag_name\":\"%s\"}\\n\' "$1"; };\n' +
+            release_input.replace('release=$(github_release "$repo")', 'release=$(github_release "$TEST_TAG")') +
+            '\nupdate_release_input pi-upstream earendil-works/pi\n', "test"], cwd=tmp,
+            env={**os.environ, "TEST_TAG": tag}, capture_output=True, text=True, check=False)
+        assert (result.returncode == 0) == succeeds, result.stderr
+        assert flake_file.read_text() == (original.replace("/pi/v1.1.0", "/pi/" + tag) if succeeds else original)
+
 # The updater and installed package share this exact normalization. Preserve all
 # unrelated constraints and metadata, including standalone binaries.
 peers = ["@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"]

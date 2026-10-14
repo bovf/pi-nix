@@ -5,12 +5,12 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     pi-upstream = {
-      url = "github:earendil-works/pi/stable";
+      url = "github:earendil-works/pi/v1.2.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     hunk = {
-      url = "github:modem-dev/hunk";
+      url = "github:modem-dev/hunk/v0.23.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

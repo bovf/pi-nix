@@ -1,8 +1,8 @@
 // Run with the official Node 22 in the private filesystem/network sandbox documented in README:
 // node tests/subagents-host-peers.mjs <pi store path> <pi-subagents store path>
 // Checks the installed resolver and native background child-session factory.
-// The retained Pi server Unix handshake is a separate packaging check, not the
-// pi-subagents background transport (which uses in-process SDK sessions).
+// Pi1.2 removed experimental Unix server/client/protocol packages; supported
+// integration is the native child SDK plus the separate bundled CLI RPC gate.
 import assert from "node:assert/strict";
 import { fork, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -11,7 +11,8 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const [core, subagents, childSocket, childServerId] = process.argv.slice(2);
+const [core, subagents, childMode] = process.argv.slice(2);
+assert(!childMode || childMode === "native-child");
 assert(core && subagents, "provide Pi and pi-subagents store paths");
 const hostModules = `${core}/lib/pi/node_modules`;
 const root = `${hostModules}/@earendil-works/pi-coding-agent`;
@@ -26,13 +27,18 @@ assert.deepEqual(HOST_PEER_ALIASES.filter(({ optional }) => optional), [
   { specifier: obsolete, pkg: "@earendil-works/pi-agent-core", subpath: "./node", optional: true },
 ]);
 const nodeExport = resolvePackageSubpath(`${hostModules}/@earendil-works/pi-agent-core`, "./node");
-// The resolver also requires these chord aliases for Pi >= 0.85.
+// The CLI dropped Chord in1.2, but our supported Durable helper still requires it.
+// Keep the complete installed host inventory, not a filter that hides missing peers.
 const required = [...HOST_PEER_ALIASES.filter(({ specifier }) => specifier !== obsolete || nodeExport !== undefined),
   { specifier: "@earendil-works/chord", pkg: "@earendil-works/chord" },
   { specifier: "@earendil-works/chord/context", pkg: "@earendil-works/chord" },
 ];
 assert.deepEqual(Object.keys(resolved.aliases).sort(), required.map(({ specifier }) => specifier).sort());
 const hostVersion = JSON.parse(await readFile(`${root}/package.json`, "utf8")).version;
+for (const name of ["server", "client", "protocol"]) {
+  assert.equal(resolvePackageSubpath(`${hostModules}/@earendil-works/pi-${name}`, "."), undefined,
+    `removed experimental pi-${name} must not be bundled on Pi1.2`);
+}
 if (Number(hostVersion.split(".")[0]) >= 1) {
   assert.equal(nodeExport, undefined);
   assert.equal(resolved.aliases[obsolete], undefined);
@@ -49,15 +55,11 @@ if (Number(hostVersion.split(".")[0]) >= 1) {
   }
 }
 const modules = {};
-// Also import the retained server and the workspaces added to Pi's offline build.
+// Also import the supported helper libraries from the same host output.
 const packagedPeers = [
   { specifier: "@earendil-works/pi-codemode", pkg: "@earendil-works/pi-codemode", subpath: "." },
   { specifier: "@earendil-works/pi-mcp", pkg: "@earendil-works/pi-mcp", subpath: "." },
   { specifier: "@earendil-works/pi-durable", pkg: "@earendil-works/pi-durable", subpath: "." },
-  { specifier: "@earendil-works/pi-server", pkg: "@earendil-works/pi-server", subpath: "." },
-  { specifier: "@earendil-works/pi-server/unix", pkg: "@earendil-works/pi-server", subpath: "./unix" },
-  { specifier: "@earendil-works/pi-client/unix", pkg: "@earendil-works/pi-client", subpath: "./unix" },
-  { specifier: "@earendil-works/pi-protocol", pkg: "@earendil-works/pi-protocol", subpath: "." },
 ];
 for (const { specifier, pkg, subpath } of [...required, ...packagedPeers]) {
   const target = await realpath(resolved.aliases[specifier] ?? resolvePackageSubpath(`${hostModules}/${pkg}`, subpath));
@@ -66,7 +68,7 @@ for (const { specifier, pkg, subpath } of [...required, ...packagedPeers]) {
     const packageDir = pkg.endsWith("/pi-coding-agent") ? root : `${hostModules}/${pkg}`;
     assert.equal(JSON.parse(await readFile(`${packageDir}/package.json`, "utf8")).version, hostVersion);
   }
-  if (childSocket && specifier in resolved.aliases) {
+  if (childMode && specifier in resolved.aliases) {
     assert.equal(await realpath(fileURLToPath(import.meta.resolve(specifier))), target,
       `${specifier} must resolve through the installed preload to the host`);
     modules[specifier] = await import(specifier);
@@ -75,7 +77,7 @@ for (const { specifier, pkg, subpath } of [...required, ...packagedPeers]) {
   }
 }
 
-if (childSocket) {
+if (childMode) {
   // Exercise the actual installed background factory with the real host SDK,
   // not an injected fake session. Never prompt, query credentials, or call a model.
   const { loadRunnerChildSessionFactory } = await import(
@@ -114,21 +116,8 @@ if (childSocket) {
   }
   console.log("PASS: installed native preload resolved all bare host peers; default background child factory created/disposed an in-memory SDK session; lifecycle hooks; no prompt");
 
-  const testing = resolvePackageSubpath(`${hostModules}/@earendil-works/pi-server`, "./testing");
-  const { TestServerHost } = await import(pathToFileURL(testing));
-  const server = modules["@earendil-works/pi-server/unix"].createUnixServer(new TestServerHost(), {
-    serverId: childServerId,
-    path: childSocket,
-  });
-  assert(server instanceof modules["@earendil-works/pi-server"].Server);
-  try {
-    await server.start();
-    process.send("ready");
-    await once(process, "message");
-  } finally {
-    await server.close();
-    process.disconnect();
-  }
+  process.send("ready");
+  process.disconnect();
 } else {
   // Match async-execution.js's installed JS runner branch, not the JITI CLI.
   const execArgv = ["--import", pathToFileURL(`${subagents}/runner-peer-preload.mjs`).href];
@@ -177,11 +166,8 @@ if (childSocket) {
   }
   console.log("PASS: production bootstrap/default heavy import reached pre-dispatch storage setup; absent-alias control failed at peer import; no task");
 
-  // Upstream's in-memory test host: transport/hello only, no sessions or model calls.
-  const directory = await mkdtemp("/tmp/pi-peer-");
-  const serverId = randomUUID();
-  const socket = join(directory, `${serverId}.sock`);
-  const child = fork(fileURLToPath(import.meta.url), [core, subagents, socket, serverId], {
+  // Separate Node process, production preload and actual SDK child factory; no task/model.
+  const child = fork(fileURLToPath(import.meta.url), [core, subagents, "native-child"], {
     execArgv, env,
     stdio: ["ignore", "inherit", "inherit", "ipc"],
   });
@@ -189,14 +175,10 @@ if (childSocket) {
   try {
     const [ready] = await once(child, "message", { signal: AbortSignal.timeout(10_000) });
     assert.equal(ready, "ready");
-    const routes = await modules["@earendil-works/pi-client/unix"].discoverUnixServers({ directory });
-    assert.deepEqual(routes, [{ serverId, path: socket }]);
-    child.send("stop");
     assert.deepEqual(await exited, [0, null]);
-    console.log(`PASS: ${required.length} complete host aliases at Pi ${hostVersion}; host-only imports; separate Pi server Unix handshake and shutdown`);
+    console.log(`PASS: ${required.length} complete host aliases at Pi ${hostVersion}; host-only imports; supported native SDK child lifecycle and shutdown`);
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
     await exited;
-    await rm(directory, { recursive: true, force: true });
   }
 }

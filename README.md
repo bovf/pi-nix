@@ -40,21 +40,24 @@ packages.${system}.pi-goal
 ```
 
 `pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
-locked to Pi **1.1.0** (`abe508e1b89912adde45528136c3221eb69acdd7`). The
-`pi-upstream` input tracks `stable` but follows this flake's existing nixpkgs.
+locked to Pi **1.2.0** (`06a466935536f8c9bcacb2d5efc0fc021be1bdff`). The
+`pi-upstream` input selects stable release tags and follows this flake's nixpkgs.
+The operator approved leaving the lagging `stable` branch. The updater now resolves
+Pi/Hunk stable tags before locking, rather than selecting Hunk's beta main.
 Upstream owns Node 22, source/install locks, catalog hydration and install checks;
 there is no second local core recipe or independently updated core hash.
 
-A uniquely matched workspace-install hook packs the upstream build's
-already-compiled durable/protocol/client/server libraries. Its locked npm
-metadata identifies that same workspace output; Nix string context is preserved.
-The libraries are installed beside the official modules in the **same core
-output**, sharing chord, AI and typebox. Remove this hook when upstream installs
-the libraries itself. The upstream recipe remains unmodified; no
-platform-specific recipe generation/import-from-derivation is needed.
-Native SDK and separate Unix-handshake tests remain required; neither CLI help
-nor the subagents transport substitutes for them. `pi-subagents` 0.76.1 uses native
-SDK sessions inside its detached runner, not the older Unix-server transport.
+A uniquely matched workspace-install hook packs the upstream build's compiled
+Durable helper and installs it with its compiled Chord dependency in the same
+host output. Locked metadata identifies those artifacts; Nix string context is
+preserved, without a second core recipe or mismatched registry helpers.
+Pi 1.2 removed experimental server/client/protocol workspaces. With approval,
+their packing and Unix-handshake contract are retired; supported native SDK,
+child/preload/host-peer controls and actual bundled CLI RPC remain required.
+Subagents 0.78.0 uses native SDK sessions, not the retired Unix transport.
+A unique-match install-check fix replaces upstream 1.2's stale esbuild probe with
+an actual installed Jiti TypeScript load; other upstream native checks remain.
+[Current channels, versions and compatibility evidence](docs/update-2026-10-14.md).
 
 The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
 its shared peers are hoisted in `lib/pi/node_modules`. Native `remote-pi` links
@@ -92,11 +95,10 @@ pkgs.piPackages.pi-goal
 
 `hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill. The packaged `pi-archimedes` leaves clipboard images to Pi core and delegation to `pi-subagents`, avoiding duplicate shortcuts and tools.
 
-Archimedes 2.9.3's footer uses the unsupported `info` theme color for Git's
-`ahead` indicator. A fail-fast packaging substitution changes both its color
-type declaration and value to Pi's `accent`; the footer stays enabled. Remove
-this compatibility fix when upstream supports the same regression unpatched.
-No package version, npm dependency lock or Pi core change is involved.
+Archimedes 2.10.4 fixes its footer color upstream. Successful unmodified rendering
+tripped the old obsolescence guard, so its info-to-accent patch/negative probe are
+retired. The enabled footer still has mandatory actual rendering, zero-stderr and
+timeout checks that block dependent generations.
 
 Each entry is shaped like:
 
@@ -148,8 +150,10 @@ nix run .#update        # update all pins/managed locks, then build
 nix develop             # installs staged-file Alejandra pre-commit hook
 ```
 
-For a core-only update, run `nix flake update pi-upstream`, then build and run the
-isolated integration checks with the core's `nodejs` passthru. This advances the
+For a core-only update, select the approved official stable release tag in
+`pi-upstream.url`, run `nix flake update pi-upstream`, then build and run the
+isolated integration checks with the core's `nodejs` passthru. The full updater
+resolves latest stable Pi/Hunk release tags automatically. This advances the
 locked official input; it does not rewrite source/catalog/npm hashes here.
 
 `nix run .#update` remains the full updater (including nixpkgs/Hunk inputs):
@@ -257,7 +261,13 @@ Pi's npm latest and GitHub latest release both report 1.0.0; the build uses tag
 `v1.0.0` (`a13d35a742c6ef8462812a28fbe1d8c8b7431c32`), its workspace lock and
 integrity-pinned matching npm model catalog, not a substitute release asset.
 
-### Host peers and regression checks
+### Historical Pi 1.1 host-peer and regression contract
+
+The description below records the preceding acceptance, including its now-retired
+experimental Unix stack and footer patch/probe. For current Pi 1.2 interfaces,
+complete host inventory and retained behavioural gates, see
+[the current update](docs/update-2026-10-14.md). Do not treat old Unix/probe success
+as current acceptance or restore an obsolete patch.
 
 `remote-pi` 0.7.0 still declares Pi core/TUI and typebox as private dependencies
 upstream. `pkgs/remote-pi/host-peers.jq` normalizes only these three packages to

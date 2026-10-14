@@ -13,10 +13,7 @@
                   prev.lib.replaceStrings ["pack_package packages/coding-agent coding-agent"] [
                     ''
                       pack_package packages/coding-agent coding-agent
-                      pack_package packages/durable durable
-                      pack_package packages/protocol protocol
-                      pack_package packages/client client
-                      pack_package packages/server server''
+                      pack_package packages/durable durable''
                   ]
                   attrs.installPhase;
               }
@@ -36,11 +33,21 @@ in {
         openaiCodexContextWindows = builtins.fromJSON (builtins.readFile ./openai-codex-context.json);
         nodejs = prev.nodejs_22;
       };
+    # Pi1.2's recipe still probes esbuild after its install lock switched to Jiti.
+    installCheckPhase = let
+      stale = "require('$out/lib/pi/node_modules/esbuild').transformSync('const value: number = 1', { loader: 'ts' })";
+      current = "const fs = require('node:fs'); const path = require('node:path'); const file = path.join(process.env.TMPDIR, 'pi-install-check.ts'); fs.writeFileSync(file, 'export const value: number = 1;'); const result = require('$out/lib/pi/node_modules/jiti').createJiti(file, { moduleCache: false })(file); if (result.value !== 1) throw new Error('installed TypeScript loader failed')";
+    in
+      assert builtins.length (prev.lib.splitString stale old.installCheckPhase) == 2;
+        prev.lib.replaceStrings [stale] [current] old.installCheckPhase;
     postInstall =
       (old.postInstall or "")
       + ''
-        for workspace in durable protocol client server; do
-          target="$out/lib/pi/node_modules/@earendil-works/pi-$workspace"
+        # Durable still imports the compiled Chord library even though the CLI no longer does.
+        for workspace in durable chord; do
+          name="pi-$workspace"
+          if [ "$workspace" = chord ]; then name=chord; fi
+          target="$out/lib/pi/node_modules/@earendil-works/$name"
           mkdir -p "$target"
           tar -xzf ${workspacePackages}/$workspace.tgz --strip-components=1 -C "$target"
         done
