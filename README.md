@@ -37,10 +37,13 @@ packages.${system}.pi-lsp
 packages.${system}.pi-chrome-devtools
 packages.${system}.pi-btw
 packages.${system}.pi-goal
+# Linux-only local runtimes:
+packages.${system}.badwater-video
+packages.${system}.badwater-craft-mcp
 ```
 
 `pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
-locked to Pi **1.2.0** (`06a466935536f8c9bcacb2d5efc0fc021be1bdff`). The
+locked to Pi **1.3.0** (`71023aec1546d6d677a65669c5665c0927ce0dd0`). The
 `pi-upstream` input selects stable release tags and follows this flake's nixpkgs.
 The operator approved leaving the lagging `stable` branch. The updater now resolves
 Pi/Hunk stable tags before locking, rather than selecting Hunk's beta main.
@@ -54,10 +57,10 @@ preserved, without a second core recipe or mismatched registry helpers.
 Pi 1.2 removed experimental server/client/protocol workspaces. With approval,
 their packing and Unix-handshake contract are retired; supported native SDK,
 child/preload/host-peer controls and actual bundled CLI RPC remain required.
-Subagents 0.78.0 uses native SDK sessions, not the retired Unix transport.
-A unique-match install-check fix replaces upstream 1.2's stale esbuild probe with
-an actual installed Jiti TypeScript load; other upstream native checks remain.
-[Current channels, versions and compatibility evidence](docs/update-2026-10-14.md).
+Subagents 0.79.0 uses native SDK sessions, not the retired Unix transport.
+Pi1.3 fixes the stale install probe upstream, so its local substitution is retired.
+The bridge packs both compiled Durable/Chord artifacts; native install, SDK and
+actual footer gates remain. [Current update and limits](docs/update-2026-10-18.md).
 
 The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
 its shared peers are hoisted in `lib/pi/node_modules`. Native `remote-pi` links
@@ -192,7 +195,13 @@ remove that directory when the outputs are no longer needed.
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Checked pins (2026-10-08)
+### Current update (2026-10-18)
+
+Pi1.3.0 and all packaged plugins/skills/dependency locks were audited; all18
+native exports build and private loader/SDK/CLI/footer/Graphify policy checks
+pass. See [the exact version table, compatibility changes and limits](docs/update-2026-10-18.md).
+
+### Historical checked pins (2026-10-08)
 
 The full updater selects official Pi **1.0.4 → 1.1.0** from `stable`,
 matching tag `v1.1.0` and npm latest. The official recipe and the local

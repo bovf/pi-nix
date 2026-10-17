@@ -34,6 +34,7 @@ assert 'attrs.pname == "pi-workspace-packages"' in core
 assert 'prev.lib.strings.addContextFrom lock' in core
 assert all(field not in core for field in ['npmDepsHash', 'modelData', 'buildNpmPackage'])
 assert 'for workspace in durable chord;' in core
+assert 'pack_package packages/chord chord' in core
 assert all(f'packages/{name}' not in core for name in ['protocol', 'client', 'server'])
 
 with tempfile.TemporaryDirectory() as directory:

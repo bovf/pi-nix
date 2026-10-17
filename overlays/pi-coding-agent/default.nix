@@ -13,7 +13,8 @@
                   prev.lib.replaceStrings ["pack_package packages/coding-agent coding-agent"] [
                     ''
                       pack_package packages/coding-agent coding-agent
-                      pack_package packages/durable durable''
+                      pack_package packages/durable durable
+                      pack_package packages/chord chord''
                   ]
                   attrs.installPhase;
               }
@@ -33,13 +34,6 @@ in {
         openaiCodexContextWindows = builtins.fromJSON (builtins.readFile ./openai-codex-context.json);
         nodejs = prev.nodejs_22;
       };
-    # Pi1.2's recipe still probes esbuild after its install lock switched to Jiti.
-    installCheckPhase = let
-      stale = "require('$out/lib/pi/node_modules/esbuild').transformSync('const value: number = 1', { loader: 'ts' })";
-      current = "const fs = require('node:fs'); const path = require('node:path'); const file = path.join(process.env.TMPDIR, 'pi-install-check.ts'); fs.writeFileSync(file, 'export const value: number = 1;'); const result = require('$out/lib/pi/node_modules/jiti').createJiti(file, { moduleCache: false })(file); if (result.value !== 1) throw new Error('installed TypeScript loader failed')";
-    in
-      assert builtins.length (prev.lib.splitString stale old.installCheckPhase) == 2;
-        prev.lib.replaceStrings [stale] [current] old.installCheckPhase;
     postInstall =
       (old.postInstall or "")
       + ''

@@ -5,7 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     pi-upstream = {
-      url = "github:earendil-works/pi/v1.2.0";
+      url = "github:earendil-works/pi/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

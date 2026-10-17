@@ -13,7 +13,7 @@ assert(core && archimedes, "provide Pi and Archimedes store paths");
 assert.equal(process.argv.length, 4, "unknown footer test arguments");
 assert.equal(process.cwd(), process.env.HOME, "use a private fixture HOME/cwd");
 const sdkRoot = `${core}/lib/pi/node_modules/@earendil-works`;
-const { DefaultResourceLoader, SettingsManager, Theme } = await import(
+const { DefaultResourceLoader, SessionManager, SettingsManager, Theme } = await import(
   pathToFileURL(`${sdkRoot}/pi-coding-agent/dist/index.js`)
 );
 const { getThemeByName } = await import(
@@ -71,9 +71,12 @@ for (const name of ["dark", "light"]) {
   const ctx = {
     mode: "tui", hasUI: true,
     model: { id: "footer-fixture", contextWindow: 128_000 },
-    sessionManager: { getEntries: () => [] },
+    sessionManager: SessionManager.inMemory(process.cwd()),
     getContextUsage: () => ({ tokens: 32_000, contextWindow: 128_000, percent: 25 }),
     ui: {
+      notify(message, level = "info") {
+        diagnostics.push({ level, args: [message] });
+      },
       setFooter(factory) {
         footer = factory({ requestRender() {} }, theme, {
           getGitBranch: () => "footer-test",

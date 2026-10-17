@@ -57,6 +57,7 @@ if (Number(hostVersion.split(".")[0]) >= 1) {
 const modules = {};
 // Also import the supported helper libraries from the same host output.
 const packagedPeers = [
+  { specifier: "@earendil-works/pi-telemetry", pkg: "@earendil-works/pi-telemetry", subpath: "." },
   { specifier: "@earendil-works/pi-codemode", pkg: "@earendil-works/pi-codemode", subpath: "." },
   { specifier: "@earendil-works/pi-mcp", pkg: "@earendil-works/pi-mcp", subpath: "." },
   { specifier: "@earendil-works/pi-durable", pkg: "@earendil-works/pi-durable", subpath: "." },
