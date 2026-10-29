@@ -13,6 +13,20 @@ const pi = await import(pathToFileURL(`${root}/dist/index.js`));
 const { AuthStorage } = await import(pathToFileURL(`${root}/dist/core/auth-storage.js`));
 const limits = JSON.parse(await readFile(limitsPath, "utf8"));
 const providers = ["openai", "openai-codex"];
+// Pi1.4's pinned catalog removed these retired IDs only from the subscription route.
+// Keep their reviewed limits for the API route; overrides must not resurrect them.
+const retiredSubscriptionIds = ["gpt-5.3-codex-spark", "gpt-5.5"];
+const activeSubscriptionIds = [
+  "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
+  "gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol",
+];
+const expectedReviewedModels = {
+  openai: [...retiredSubscriptionIds, ...activeSubscriptionIds],
+  "openai-codex": activeSubscriptionIds,
+};
+const expectedCounts = { openai: 9, "openai-codex": 7 };
+const expectedChildren = 16;
+assert.deepEqual(Object.keys(limits).sort(), [...retiredSubscriptionIds, ...activeSubscriptionIds].sort());
 const agentDir = join(process.env.HOME, ".pi/agent");
 let networkCalls = 0;
 globalThis.fetch = () => { networkCalls++; throw new Error("provider/network calls forbidden"); };
@@ -27,13 +41,18 @@ if (child) {
   let started = 0;
   let stopped = 0;
   try {
-    for (const provider of providers) for (const id of Object.keys(limits)) {
+    for (const provider of providers) for (const id of expectedReviewedModels[provider]) {
       const session = await factory.create({
         cwd: process.cwd(), storage: { kind: "memory" }, model: `${provider}/${id}`,
         ambientExtensions: false, extensionPaths: [], noSkills: true, noContextFiles: true,
         tools: [], runtime: {},
         hooks: [{ name: "context-check", factory(api) {
-          api.on("session_start", (_event, ctx) => { checkModel(ctx.model); started++; });
+          api.on("session_start", (_event, ctx) => {
+            assert.equal(ctx.model.provider, provider);
+            assert.equal(ctx.model.id, id);
+            checkModel(ctx.model);
+            started++;
+          });
           api.on("session_shutdown", () => { stopped++; });
         } }],
         onExtensionError: (error) => errors.push(error),
@@ -44,7 +63,7 @@ if (child) {
   } finally {
     await factory.dispose();
   }
-  assert.equal(started, providers.length * Object.keys(limits).length);
+  assert.equal(started, expectedChildren);
   assert.equal(stopped, started);
   assert.deepEqual(errors, []);
   assert.equal(networkCalls, 0);
@@ -55,7 +74,14 @@ if (child) {
   const settingsPath = join(agentDir, "settings.json");
   const baseline = await pi.ModelRuntime.create({ modelsPath: null, credentials: AuthStorage.inMemory() });
   const catalogIds = baseline.getModels("openai-codex").map(m => m.id).sort();
-  assert.deepEqual(catalogIds, Object.keys(limits).sort(), "review limits when the packaged subscription catalog changes");
+  assert.deepEqual(catalogIds, activeSubscriptionIds, "review the exact active subscription inventory on catalog changes");
+  for (const provider of providers) {
+    const reviewedIds = baseline.getModels(provider).filter(m => m.id in limits).map(m => m.id).sort();
+    assert.deepEqual(reviewedIds, [...expectedReviewedModels[provider]].sort(), provider);
+    assert.equal(reviewedIds.length, expectedCounts[provider], provider);
+    assert(baseline.getModel(provider, "gpt-6.1-sol"), `${provider}: selected default must remain available`);
+  }
+  for (const id of retiredSubscriptionIds) assert.equal(baseline.getModel("openai-codex", id), undefined);
   assert.equal(limits["gpt-5.3-codex-spark"], 128000, "retired Spark must not be inflated");
   for (const [id, limit] of Object.entries(limits)) {
     assert(Number.isSafeInteger(limit) && limit > 0, id);
@@ -67,6 +93,9 @@ if (child) {
   const compactionOverrides = Object.fromEntries(providers.flatMap(p => Object.entries(limits).filter(([, n]) => n > 272000).map(([id]) => [`${p}/${id}`, { reserveTokens: 150000 }])));
   await writeFile(settingsPath, JSON.stringify({ theme: "dark", compaction: { enabled: true, reserveTokens: 32000, keepRecentTokens: 60000, modelOverrides: compactionOverrides } }));
   const runtime = await pi.ModelRuntime.create({ modelsPath, credentials: AuthStorage.inMemory() });
+  const identities = models => models.map(m => `${m.type ?? "chat"}/${m.provider}/${m.id}`).sort();
+  assert.deepEqual(identities(runtime.getAllModels()), identities(baseline.getAllModels()), "overrides must not add or remove models");
+  for (const id of retiredSubscriptionIds) assert.equal(runtime.getModel("openai-codex", id), undefined, "overrides must not revive retired subscription models");
   for (const old of baseline.getAllModels()) {
     const current = runtime.getModelOfType(old.type ?? "chat", old.provider, old.id);
     const expected = (old.type ?? "chat") === "chat" && providers.includes(old.provider) && old.id in limits ? { ...old, contextWindow: limits[old.id] } : old;
@@ -74,7 +103,8 @@ if (child) {
   }
   await runtime.refresh({ allowNetwork: false });
   const settings = pi.SettingsManager.create(process.cwd(), agentDir, { projectTrusted: false });
-  for (const provider of providers) for (const [id, limit] of Object.entries(limits)) {
+  for (const provider of providers) for (const id of expectedReviewedModels[provider]) {
+    const limit = limits[id];
     const model = runtime.getModel(provider, id);
     checkModel(model);
     const resolved = settings.getCompactionSettings(model);
@@ -88,6 +118,8 @@ if (child) {
   await loader.reload();
   const { session } = await pi.createAgentSession({ model, modelRuntime: runtime, settingsManager: settings, resourceLoader: loader, sessionManager: pi.SessionManager.inMemory(), noTools: true });
   checkModel(session.model);
+  assert.equal(session.model.provider, "openai");
+  assert.equal(session.model.id, "gpt-6.1-sol");
   assert.equal(session.messages.length, 0);
   session.dispose();
   const { resolveHostPeerAliases } = await import(pathToFileURL(`${subagents}/src/runs/background/runner-aliases.js`));
@@ -102,5 +134,5 @@ if (child) {
   assert.equal(result.stderr, "");
   process.stdout.write(result.stdout);
   assert.equal(networkCalls, 0);
-  console.log(`PASS all ${catalogIds.length} catalog limits, both subscription routes, per-model compaction, native SDK and unchanged unrelated metadata; no live entitlement claim`);
+  console.log(`PASS exact ${catalogIds.length} active subscription IDs; 9 API + 7 subscription reviewed pairs, 2 absent subscription IDs not revived; per-model compaction, native SDK and unchanged unrelated metadata; no live entitlement claim`);
 }

@@ -40,10 +40,12 @@ packages.${system}.pi-goal
 # Linux-only local runtimes:
 packages.${system}.badwater-video
 packages.${system}.badwater-craft-mcp
+# x86_64-linux-only complete native/static bundle:
+packages.x86_64-linux.rea
 ```
 
 `pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
-locked to Pi **1.3.0** (`71023aec1546d6d677a65669c5665c0927ce0dd0`). The
+locked to Pi **1.4.0** (`4a080252f06caf63a525d7873c5d94d3c23887e0`). The
 `pi-upstream` input selects stable release tags and follows this flake's nixpkgs.
 The operator approved leaving the lagging `stable` branch. The updater now resolves
 Pi/Hunk stable tags before locking, rather than selecting Hunk's beta main.
@@ -57,10 +59,10 @@ preserved, without a second core recipe or mismatched registry helpers.
 Pi 1.2 removed experimental server/client/protocol workspaces. With approval,
 their packing and Unix-handshake contract are retired; supported native SDK,
 child/preload/host-peer controls and actual bundled CLI RPC remain required.
-Subagents 0.79.0 uses native SDK sessions, not the retired Unix transport.
-Pi1.3 fixes the stale install probe upstream, so its local substitution is retired.
+Subagents 0.84.0 uses native SDK sessions, not the retired Unix transport.
+Pi1.3 fixed the stale install probe upstream, so its local substitution stays retired.
 The bridge packs both compiled Durable/Chord artifacts; native install, SDK and
-actual footer gates remain. [Current update and limits](docs/update-2026-10-18.md).
+actual footer gates remain. [Current update and limits](docs/update-2026-10-29.md).
 
 The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
 its shared peers are hoisted in `lib/pi/node_modules`. Native `remote-pi` links
@@ -148,7 +150,7 @@ badwater.ai.pi.packages = with pkgs.piPackages; [
 nix run .#fmt           # auto-format Nix files with Alejandra
 nix run .#fmt -- --check
 # Preserve existing Nix configuration while limiting this update's builds:
-export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 2\ncores = 4'
+export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 1\ncores = 3'
 nix run .#update        # update all pins/managed locks, then build
 nix develop             # installs staged-file Alejandra pre-commit hook
 ```
@@ -178,28 +180,56 @@ pi-btw
 pi-goal
 ```
 
+REA is also refreshed through this same full updater (standalone CLI/MCP,
+not a Pi extension). Full update now requires x86_64-linux to realize its
+complete native backend bundle, refusing other hosts before mutating pins.
+Its separate managed dependency lock is regenerated with lifecycle scripts
+and optional Frida excluded, while retaining native PTY platform dependencies.
+Run `python3 tests/rea-audit.py` for the explicit online parent/dist-tag and
+complete dependency URL/integrity audit; save output outside the source tree.
+
 The updater refreshes Hunk's transitive flake inputs as well as nixpkgs/Hunk:
 `hunk/bun2nix`, `hunk/systems`, `hunk/bun2nix/flake-parts`, and
 `hunk/bun2nix/treefmt-nix`. The final graph has no additional unfollowed paths.
 If GitHub's anonymous release API is rate-limited, Ponytail's latest stable tag
 is resolved through the public latest-release redirect instead.
-All ten managed npm locks are regenerated from package manifests, discarding
+All ten extension npm locks and REA's separate lock are regenerated from package manifests, discarding
 published lockfiles/shrinkwraps even when the top-level version is unchanged.
 Upstream dependency constraints and existing dev/peer filtering are preserved:
 `pi-chrome-devtools` and `pi-goal` retain `@narumitw/pi-tui-kit` `0.59.0` under
-`^0.59.0`; `pi-btw` retains `0.64.0` under `^0.64.0`, not the incompatible
-newer dist-tags. Pi core and Hunk retain their matching upstream build locks.
+`^0.59.0`; `pi-btw` now declares `^0.68.0` and resolves `0.68.0`, not an
+incompatible newer dist-tag. Pi core and Hunk retain their matching upstream build locks.
 Update builds retain GC roots in a printed temporary directory outside the repo;
 remove that directory when the outputs are no longer needed.
 
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Current update (2026-10-18)
+### Current update (2026-10-29)
 
-Pi1.3.0 and all packaged plugins/skills/dependency locks were audited; all18
-native exports build and private loader/SDK/CLI/footer/Graphify policy checks
-pass. See [the exact version table, compatibility changes and limits](docs/update-2026-10-18.md).
+The full updater selects official stable Pi1.4.0 and Hunk0.24.1, plus all
+registered plugin/skill releases and all ten extension dependency locks. The
+subsequent REA addition brings the native exports to19 and managed locks to11;
+its separate current package checks are described [below](#rea-nativestatic-reverse-engineering). See
+[the exact version table, source audit, validation and limits](docs/update-2026-10-29.md).
+The [2026-10-18 acceptance](docs/update-2026-10-18.md) is historical, not a receipt
+for the current candidate or downstream integration.
+
+The refreshed nixpkgs supplies Python MCP2.3. Local search uses its supported
+low-level callbacks, retaining schema validation, tool names and error results.
+The video MCP frontend only renames the removed FastMCP import/class to the
+public MCPServer API; all38 tool descriptions/input/output schemas are unchanged.
+Craft's custom JSON bridge and backend/media policy are untouched.
+
+Run `tests/search-mcp.mjs <pi-search> <pi-search-mcp>` and
+`tests/video-mcp.mjs <badwater-video>` with the managed Node in the private
+sandbox below; search additionally requires managed `/usr/bin/env` and Bash on
+PATH for its installed wrapper. These exercise sequential actual stdio
+initialize/list and search's empty-query/negative calls, never a web query or
+video tool. `tests/mcp-stdio.mjs` keeps stdin open until each response arrives:
+MCP2 cancels pending work on EOF, so pipelined startup-only success is not enough.
+Run `tests/video-mcp-image.py` with `badwater-video.python` in the same private
+sandbox for synthetic Image content serialization, without media/backend calls.
 
 ### Historical checked pins (2026-10-08)
 
@@ -366,7 +396,7 @@ paths and host Unix sockets. Inspect startup hooks and installed wrappers when
 upgrading; never reuse live settings/auth. For example, on Linux:
 
 ```bash
-export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 2\ncores = 4'
+export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 1\ncores = 3'
 roots=$(mktemp -d)
 nix build .#pi-coding-agent --out-link "$roots/core"
 nix build .#remote-pi --out-link "$roots/remote"
@@ -450,6 +480,45 @@ pi-chrome-devtools
 pi-btw
 pi-goal
 ```
+
+## REA native/static reverse engineering
+
+`packages.x86_64-linux.rea` / `overlays.rea` exports `rea` **6.8.0**, the
+verified stable `rea-agents` npm release from [morluto/rea](https://github.com/morluto/rea).
+It is a standalone CLI/MCP package, **not** a Pi extension/registry entry.
+Manual stdio MCP interface: command `${rea}/bin/rea`, arguments `["mcp"]`.
+The matching skill and all references are at
+`${rea}/share/rea/skills/reverse-engineer-anything`.
+Policy/opt-ins and additive MCP ownership belong to `badwater-ai`/the consumer,
+not to this flake; package installation does not configure any agent.
+
+The approved free Linux bundle supplies Ghidra 12.1.4/JDK21, Rizin 0.9.1,
+GNU binutils 2.46, procps and util-linux, built-in static JS/Electron/.NET and
+artifact parsers, plus the real integrity-pinned native `@lydell/node-pty` addon.
+Node22.23.4 satisfies REA's engine bound; current nixpkgs Node24.21 does not.
+**Frida, Android, firmware extraction engines, browsers, packet/signal capture
+backends and pwntools/pwndbg/GDB are intentionally omitted.** Hopper/IDA/Kuna
+and proprietary licenses/installers are not supplied. The full 229-tool catalog
+and six prompts remain discoverable; availability/error reporting is not a
+claim that every tool can run. No capture/ptrace permissions, services or host
+policy changes are made. Active operations still need explicit task approval.
+REA runs with the invoking user's permissions; this wrapper is not a sandbox.
+
+Only x86_64-linux is advertised: the chosen Ghidra archive supplies a Linux
+x86-64 native decompiler, not ARM Linux. Darwin/ARM CLI-only support is not
+misrepresented as support for this complete bundle. Ghidra/JDK/provider paths
+are supplied declaratively; upstream uses private writable session/cache/home
+and optional extension snapshots, not store rewrites. Setup, update, uninstall
+and MCP registration helpers are refused; never use `npx`, global npm or a
+runtime installer to manage this package. Nix owns updates/configuration.
+
+`nix build .#checks.x86_64-linux.rea --no-link` runs mandatory installed CLI,
+Ghidra-scoped health, exact MCP definitions/prompts, native-addon import,
+synthetic JS and synthetic ELF Ghidra/Rizin/objdump static regressions. The ELF
+is never executed. These are package tests, not live attachment, network,
+browser, device, credential or interactive-workflow acceptance. Use the private
+filesystem/network sandbox documented above for manual runtime tests.
+[Source/license/update/safety details](docs/rea.md).
 
 ## Local native video editing
 

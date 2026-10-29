@@ -5,10 +5,9 @@
 It is packaging metadata, not a changed core catalog or custom provider.
 `badwater-ai` consumes it only when `badwater.ai.pi.openai.maxContext = true`.
 
-Audit: 2026-10-13, rechecked with Pi 1.2.0 during the 2026-10-14 full update.
-The packaged and current public
-[OpenAI-Codex catalog](https://pi.dev/api/models/providers/openai-codex?types=chat)
-list nine chat IDs. Eight official model specification cards explicitly declare
+Limit-source audit: 2026-10-13; packaged-catalog compatibility rechecked with
+Pi1.4.0 on 2026-10-29. The nine-entry reviewed limit map remains unchanged.
+Eight official model specification cards used for that review explicitly declare
 1,050,000 context tokens and 128,000 maximum output tokens:
 
 | Model | Maximum context | Official specification |
@@ -30,9 +29,25 @@ newly verified active-model entitlement. GPT-5.5 is announced to retire from
 Codex ChatGPT sign-in October 14, 2026. See [current Codex models](https://developers.openai.com/codex/models).
 No override adds missing models or revives retired ones.
 
-The same reviewed chat IDs are overridden under current `openai` and legacy
-`openai-codex`, without replacing model lists, OAuth, APIs, URLs, price tiers,
-output limits, image capabilities or classifier models. The switch does not
+Pi1.4.0's official release-pinned typed model catalog has SHA256
+`7fe1b41feaf43a7aad4bc832e6b306c7ced56e6d41bbc724b74e91eeacff6edf`
+([immutable catalog](https://pi.dev/api/models/revisions/sha256-7fe1b41feaf43a7aad4bc832e6b306c7ced56e6d41bbc724b74e91eeacff6edf?types=chat,image,classifier)).
+Its `openai-codex` route now lists exactly seven chat IDs: the three GPT5.6
+variants, GPT6 Astra/Luna/Sol and GPT6.1 Sol. Spark and GPT5.5 are absent on
+that subscription route; both remain in the packaged `openai` API catalog.
+The metadata keeps all nine reviewed entries, but overrides cannot add the two
+absent subscription models. The selected GPT6.1 Sol remains present on both
+routes. This is catalog presence, not an active-account entitlement claim.
+
+The [current public subscription catalog](https://pi.dev/api/models/providers/openai-codex?types=chat)
+at this audit additionally lists GPT6.1 Terra (eight IDs), newer than the
+release-owned snapshot. It is not packaged by this stable release and has no
+reviewed override here; do not guess a limit or silently hydrate a different
+catalog to make a test pass.
+
+The reviewed chat IDs are overridden where present under current `openai` and
+legacy `openai-codex`, without replacing model lists, OAuth, APIs, URLs, price
+tiers, output limits, image capabilities or classifier models. The switch does not
 choose an authentication method, grant server access or increase plan quotas.
 A local 1.05M declaration is not proof that an account accepts a 1M request.
 Larger prompts can consume more allowance and increase latency.
@@ -44,9 +59,13 @@ nix build .#checks.x86_64-linux.openai-context --no-link
 ```
 
 The Nix sandbox uses private HOME/cwd, `PI_OFFLINE=1`, the actual packaged Pi
-runtime, and native subagent preload/factory. It checks all nine IDs on both
-routes, unchanged other metadata (including classifiers), per-model compaction,
-native SDK selection and 18 inert child startup/shutdown cycles. No prompt,
+runtime, and native subagent preload/factory. It requires the exact seven-ID
+subscription inventory, all nine reviewed API IDs and an explicit two-ID absent
+subscription inventory. Unknown IDs/unexpected removals fail rather than being
+silently skipped. It proves model overrides do not revive missing models and
+checks unchanged other metadata (including classifiers), per-model compaction,
+the unchanged selected GPT6.1 Sol, native SDK selection and exactly16 inert
+child startup/shutdown cycles (9 API + 7 subscription). No prompt,
 credential, real media or provider call is used. Review/update the map and its
 sources whenever the packaged subscription catalog changes; unknown future IDs
 are not guessed. Non-native platforms are evaluation-only on a Linux host.

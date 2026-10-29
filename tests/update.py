@@ -121,4 +121,53 @@ assert not any(key.endswith("node_modules/" + peer)
 packages = (ROOT / "overlays/pi-packages/default.nix").read_text()
 assert "runner-aliases.js" not in packages
 assert "@earendil-works/pi-agent-core/node" not in packages
-print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; retired subagents alias patch")
+# REA is a CLI/MCP package, not a Pi extension; refresh its independently located
+# recipe with the same fresh-lock/hash pipeline and the shared installer filter.
+assert 'update_pi_package "rea" "rea-agents" "pkgs/rea" "$(cat pkgs/rea/package-filter.jq)" "overlays/rea/default.nix"' in updater
+assert 'local source_file="\'\'${5:-overlays/pi-packages/default.nix}"' in updater
+assert 'resolve_build_hash "$attr" "$source_file" "npmDepsHash"' in updater
+assert '.#rea --out-link' in updater
+rea_lock = json.loads((ROOT / "pkgs/rea/package-lock.json").read_text())
+rea_root = rea_lock["packages"][""]
+assert rea_root["dependencies"]["@lydell/node-pty"] == "1.1.0"
+assert not any(rea_root.get(field) for field in ["devDependencies", "optionalDependencies"])
+assert not any(key.endswith("node_modules/frida") for key in rea_lock["packages"])
+filtered = json.loads(subprocess.check_output(["jq", "-f", str(ROOT / "pkgs/rea/package-filter.jq")], input=json.dumps({"name": "fixture", "dependencies": {"kept": "^1"}, "optionalDependencies": {"frida": "1"}, "devDependencies": {"dev": "2"}, "scripts": {"install": "download"}, "allowScripts": {"frida": True}}), text=True))
+assert filtered == {"name": "fixture", "dependencies": {"kept": "^1"}}
+# Exercise the real shared updater against a private REA archive/recipe, with
+# registry/npm/Nix boundaries mocked. This catches a recipe-location/hash seam
+# regression without running a full update or touching any live installation.
+rea_updater = "update_pi_package() {" + shell_section("        update_pi_package() {", '        update_release_input "pi-upstream"')
+with tempfile.TemporaryDirectory() as directory:
+    import tarfile
+    tmp = Path(directory)
+    package = tmp / "archive/package"
+    package.mkdir(parents=True)
+    (package / "package.json").write_text(json.dumps({"name": "rea-agents", "version": "9.0.0", "dependencies": {"kept": "^1"}, "optionalDependencies": {"frida": "1"}, "scripts": {"install": "download"}}))
+    (package / "npm-shrinkwrap.json").write_text("stale")
+    with tarfile.open(tmp / "archive.tgz", "w:gz") as archive:
+        archive.add(package, arcname="package")
+    (tmp / "overlays/rea").mkdir(parents=True)
+    (tmp / "pkgs/rea").mkdir(parents=True)
+    (tmp / "overlays/rea/default.nix").write_text((ROOT / "overlays/rea/default.nix").read_text())
+    (tmp / "pkgs/rea/package-filter.jq").write_text((ROOT / "pkgs/rea/package-filter.jq").read_text())
+    subprocess.run(["bash", "-euc", '''
+        npm_meta() { printf '%s' '{"dist-tags":{"latest":"9.0.0"},"versions":{"9.0.0":{"dist":{"integrity":"sha512-fixture","tarball":"https://registry.npmjs.org/rea-agents/-/rea-agents-9.0.0.tgz"}}}}'; }
+        curl() { cat archive.tgz; }
+        npm() {
+          test ! -e npm-shrinkwrap.json
+          test ! -e package-lock.json
+          test "$*" = 'install --package-lock-only --ignore-scripts --omit=dev --legacy-peer-deps --no-audit --no-fund'
+          jq -e '.dependencies.kept == "^1" and .optionalDependencies == null and .scripts == null' package.json >/dev/null
+          printf '%s' '{"lockfileVersion":3}' > package-lock.json
+        }
+        # curl runs from the fixture root before npm changes into its temp dir.
+        fill_missing_integrities() { test -e "$1"; }
+        resolve_build_hash() { test "$*" = 'rea overlays/rea/default.nix npmDepsHash'; }
+    ''' + rea_updater + '\nupdate_pi_package rea rea-agents pkgs/rea "$(cat pkgs/rea/package-filter.jq)" overlays/rea/default.nix\n'], cwd=tmp, check=True)
+    updated = (tmp / "overlays/rea/default.nix").read_text()
+    assert 'version = "9.0.0";' in updated
+    assert 'hash = "sha512-fixture";' in updated
+    assert 'npmDepsHash = prev.lib.fakeHash;' in updated
+    assert json.loads((tmp / "pkgs/rea/package-lock.json").read_text())["lockfileVersion"] == 3
+print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; retired subagents alias patch; REA updater/filter/native optional lock coverage")

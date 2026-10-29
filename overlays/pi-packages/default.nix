@@ -127,9 +127,9 @@ in {
 
   pi-lsp = mkNarumirunaExtension {
     pname = "pi-lsp";
-    version = "0.49.10";
-    hash = "sha512-YgSCMh4YKlDofFA5dKcsLmXGeJs6kUkcAUewhErNpMt3JhaTJ0O563xdLQynBiqz6l9bcIlWOUIJG1RMKQUzDA==";
-    npmDepsHash = "sha256-4MkpblMO5Zb9xOIGYjUvLngkfJhkb4lHSNgZH71YOWE=";
+    version = "0.49.11";
+    hash = "sha512-Vd3RlSqS+FjR+DoJMHltMP5TMc3HJTkxyfwmhPci5AdPykmKfQwK+9nehgv1tXO+3CXK1lq0SDdPcs0/u53TiQ==";
+    npmDepsHash = "sha256-J00/RqOJl3FKiLyPPA+1IJxOh46YQVOvyOAj+dWhp0E=";
     lockFile = ../../pkgs/pi-lsp/package-lock.json;
     description = "Configurable language-server tools for Pi";
     forceEmptyCache = true;
@@ -146,9 +146,9 @@ in {
 
   pi-btw = mkNarumirunaExtension {
     pname = "pi-btw";
-    version = "0.61.2";
-    hash = "sha512-XPjT5fidNltCy971jBr2NoJCnJCN5AfGRVi/4qKl6V1oa+SXh1hr4rZzp3p+BLTxTqmllKNyL20TV4E6SFHTjA==";
-    npmDepsHash = "sha256-cTOL4GcP0dGgHCkh/hG6ltlTtLSBqPaaRH/sL7BIxTA=";
+    version = "0.63.2";
+    hash = "sha512-oPWWViO3Tivbb0Lw15QGn0hLNDf4cdjHIbn/+gSndrAABMSaZcfM/pZswRtXPVc0qtTDsNNymyfpuaSYMZDyQQ==";
+    npmDepsHash = "sha256-4nb9aBIWEz8K7m2Uz8sQ0Gx+JzM/RXmuM/7yrsaCLbA=";
     lockFile = ../../pkgs/pi-btw/package-lock.json;
     description = "Side-question command for Pi";
     forceEmptyCache = true;
@@ -156,22 +156,22 @@ in {
 
   pi-goal = mkNarumirunaExtension {
     pname = "pi-goal";
-    version = "0.54.12";
-    hash = "sha512-23t+dM32yLdSQh3SdzKg9ExS3iaUFhgre26vxcc6Jq9ZxV/kjuPK70wa/y5uJcrB84nWqRXoEcwvKwFbcvUPKQ==";
-    npmDepsHash = "sha256-aaPg4pL0/cOWeMTc57rRre4+4uXe2V/jq8es8c9ZYnI=";
+    version = "0.54.13";
+    hash = "sha512-uUpEzoqVWc+eyQM096sGub1xdtdpoaWkW36MVdMT2fOuAtPsnaAgXGGDfuC8bgR8+MkbUC9cR75NB2gWFslneA==";
+    npmDepsHash = "sha256-+F9eoBfnMLo6zcf4eMvJXswWWuAXOokOe1JgL71vj1c=";
     lockFile = ../../pkgs/pi-goal/package-lock.json;
     description = "Persistent goal mode for Pi";
   };
 
   ponytail = prev.stdenvNoCC.mkDerivation {
     pname = "ponytail";
-    version = "5.3.2";
+    version = "5.3.3";
 
     src = prev.fetchFromGitHub {
       owner = "DietrichGebert";
       repo = "ponytail";
-      tag = "v5.3.2";
-      hash = "sha256-IJlhfkdXI6pMZZCZO7XBRg88LBiNfzc5Gnm4ofGybL8=";
+      tag = "v5.3.3";
+      hash = "sha256-CY0EifTY0UVc6/FPGVJjEfYEf/8QLsINQmoYYKZYh98=";
     };
 
     installPhase = ''
@@ -220,15 +220,15 @@ in {
   in
     prev.buildNpmPackage rec {
       pname = "pi-archimedes";
-      version = "2.11.1";
+      version = "2.12.0";
 
       src = prev.fetchurl {
         url = "https://registry.npmjs.org/pi-archimedes/-/pi-archimedes-${version}.tgz";
-        hash = "sha512-mtG8nkfEPDusDJgHuf72bT1CePc4TzPQchT9DCEIpbIiYQRqLE5lYMQPwYn3jq5L7OZUPQS4UzRmeYJoxYl+NQ==";
+        hash = "sha512-PdmOK5O3ux5IpKRd8TMxEYYvHGHX2HqLgNHMOo6wzejImFeVQNMSBxo7B1Lrwr+gsAv2Tc9Y/xa1GFyLYE6eBg==";
       };
 
       sourceRoot = "package";
-      npmDepsHash = "sha256-AW80qm0RqWn6od8TqbusLqcc4u9eX/XTI39cwFkRieQ=";
+      npmDepsHash = "sha256-ANlRge7tZd1V9k5Zd7XD4bC6WJgyF8VOLB6DXtWRn74=";
       dontNpmBuild = true;
       npmFlags = ["--legacy-peer-deps" "--omit=dev"];
       npmInstallFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -270,15 +270,15 @@ in {
 
   rpiv-todo = prev.buildNpmPackage rec {
     pname = "rpiv-todo";
-    version = "2.13.9";
+    version = "2.15.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@juicesharp/rpiv-todo/-/rpiv-todo-${version}.tgz";
-      hash = "sha512-fXuUVU2HlxiUMeDeRTXbSVDPftP+CMGe47nAA5H0BX4YYl7chl1M2fSL1fFQqq5FCcpk5+ZBiQ43tiKvUu97gQ==";
+      hash = "sha512-8WfYssdgQgSWzFNsRzdw5Z6ZJIjO2ecM/YqEzYpR/ore+Hh5aNmafGVy94uFbIofAv2wGGitx5e3J/ucRrViXQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-rCBW4VAY9xtqS2G2lNw3jVGV1FZEtg7StOn3Bm0ru0E=";
+    npmDepsHash = "sha256-sjdMY3ckkuP6Ch/LK+6880QslDzFSgrDaeBfANuYj6U=";
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps"];
     npmInstallFlags = ["--legacy-peer-deps"];
@@ -305,15 +305,15 @@ in {
 
   plannotator-pi-extension = prev.buildNpmPackage rec {
     pname = "plannotator-pi-extension";
-    version = "0.28.23";
+    version = "0.28.37";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/@plannotator/pi-extension/-/pi-extension-${version}.tgz";
-      hash = "sha512-C59ZYaiv99U5cNCoISiHZdDgjEc8ZQ5ow1GCd40dymKFwmuw6ZX0QK4kfdP5qUVp9pRlCFLYrr7a0QNmIlyW9g==";
+      hash = "sha512-QHEP1Nzo3GHDpVJ/+2FfCIPZe0z7tjUs2ttQtmz8nB0f5j90VbZT5UmnvwqxQYJtA/qYPJ1N6aRjAABM4O7GLQ==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-BNad3BcCLR/nWkXD5Lt45JurkErpbhqBG1WIGf2GDhA=";
+    npmDepsHash = "sha256-LWU32GEpCySpcWqNxiEVS9z3tgo0aNsGy+c9gNOhZMw=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -341,15 +341,15 @@ in {
 
   pi-subagents = prev.buildNpmPackage rec {
     pname = "pi-subagents";
-    version = "0.79.0";
+    version = "0.84.0";
 
     src = prev.fetchurl {
       url = "https://registry.npmjs.org/pi-subagents/-/pi-subagents-${version}.tgz";
-      hash = "sha512-9FVPNxqYEKvimSGmQF3BqdofGTrrbY33DAS9rgtlnuvdGOvhjbhZeL2bwKYi1VOaSJcV033UpcVGLbNL4H4OOA==";
+      hash = "sha512-IagE1hcBxLi82jTxTmcy/pIWckBuqhMH1GfAOe6/aIMVfnopMybCbcTMUS5K0CNy4tqSwHGleaXabaDmJS1QOg==";
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-UagJu++BEIDotuh8uadR4KXwevQn0PxPAdfySVCxEP4=";
+    npmDepsHash = "sha256-O8R0DAEYDwtvabZvdaKWSEtNYu9cZLLeSkNUlubBZkU=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];
@@ -385,7 +385,7 @@ in {
     };
 
     sourceRoot = "package";
-    npmDepsHash = "sha256-Wpn73zLp1j+3XWP0/fqA2uCMhWnc8IjRvJOGaft4q5k=";
+    npmDepsHash = "sha256-9yQs0orrzTCc0aL6KhJ7Si5OMPcUsiYtbqaRNg7HR8A=";
     npmDepsFetcherVersion = 2;
     dontNpmBuild = true;
     npmFlags = ["--legacy-peer-deps" "--omit=dev"];

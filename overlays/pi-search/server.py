@@ -4,35 +4,33 @@ import os
 import subprocess
 import sys
 
-from mcp.server import Server, NotificationOptions
-from mcp.server.models import InitializationOptions
+import jsonschema
+from mcp.server import Server
 from mcp.server.stdio import stdio_server
 import mcp.types as types
 
 DDGR = os.environ.get("PI_SEARCH_DDGR", "ddgr")
 
-server = Server("pi-search")
-
-
-@server.list_tools()
-async def list_tools():
-    return [types.Tool(
-        name="web_search",
-        description=("DuckDuckGo web search. Returns up to N results with "
-                     "title, URL, and snippet."),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "max_results": {"type": "integer", "default": 10,
-                                "minimum": 1, "maximum": 30},
-            },
-            "required": ["query"],
+WEB_SEARCH = types.Tool(
+    name="web_search",
+    description=("DuckDuckGo web search. Returns up to N results with "
+                 "title, URL, and snippet."),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "max_results": {"type": "integer", "default": 10,
+                            "minimum": 1, "maximum": 30},
         },
-    )]
+        "required": ["query"],
+    },
+)
 
 
-@server.call_tool()
+async def list_tools(ctx, params):
+    return types.ListToolsResult(tools=[WEB_SEARCH])
+
+
 async def call_tool(name, arguments):
     if name != "web_search":
         return [types.TextContent(type="text", text=f"unknown tool {name}")]
@@ -67,19 +65,26 @@ async def call_tool(name, arguments):
     return [types.TextContent(type="text", text="\n\n".join(lines))]
 
 
+async def handle_call_tool(ctx, params):
+    # MCP1's decorator supplied validation/error normalization; MCP2 callbacks own it.
+    arguments = params.arguments or {}
+    try:
+        if params.name == WEB_SEARCH.name:
+            jsonschema.validate(instance=arguments, schema=WEB_SEARCH.input_schema)
+        return types.CallToolResult(content=await call_tool(params.name, arguments))
+    except jsonschema.ValidationError as error:
+        message = f"Input validation error: {error.message}"
+    except Exception as error:
+        message = str(error)
+    return types.CallToolResult(content=[types.TextContent(type="text", text=message)], is_error=True)
+
+
+server = Server("pi-search", version="0.1.0", on_list_tools=list_tools, on_call_tool=handle_call_tool)
+
+
 async def main():
     async with stdio_server() as (rs, ws):
-        await server.run(
-            rs, ws,
-            InitializationOptions(
-                server_name="pi-search",
-                server_version="0.1.0",
-                capabilities=server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={},
-                ),
-            ),
-        )
+        await server.run(rs, ws, server.create_initialization_options())
 
 
 if __name__ == "__main__":

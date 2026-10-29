@@ -5,12 +5,12 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     pi-upstream = {
-      url = "github:earendil-works/pi/v1.3.0";
+      url = "github:earendil-works/pi/v1.4.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     hunk = {
-      url = "github:modem-dev/hunk/v0.23.0";
+      url = "github:modem-dev/hunk/v0.24.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -38,13 +38,15 @@
     piPackagesOverlay = import ./overlays/pi-packages {inherit hunk;};
     piCodingAgentOverlay = import ./overlays/pi-coding-agent {inherit pi-upstream;};
     videoOverlay = import ./overlays/badwater-video {};
+    reaOverlay = import ./overlays/rea {};
 
     defaultOverlay = final: prev:
       (piVimOverlay final prev)
       // (piSearchOverlay final prev)
       // (piPackagesOverlay final prev)
       // (piCodingAgentOverlay final prev)
-      // (videoOverlay final prev);
+      // (videoOverlay final prev)
+      // (reaOverlay final prev);
   in {
     overlays = {
       default = defaultOverlay;
@@ -53,6 +55,7 @@
       pi-packages = piPackagesOverlay;
       pi-coding-agent = piCodingAgentOverlay;
       badwater-video = videoOverlay;
+      rea = reaOverlay;
     };
 
     packages = forAllSystems (system: let
@@ -69,6 +72,9 @@
       }
       // nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
         inherit (pkgs) badwater-video badwater-craft-mcp;
+      }
+      // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+        inherit (pkgs) rea;
       });
 
     # This package runs the footer checks during its build, not only via flake check.
@@ -91,6 +97,9 @@
       }
       // nixpkgs.lib.optionalAttrs (system != "aarch64-darwin") {
         badwater-video = self.packages.${system}.badwater-video;
+      }
+      // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+        rea = self.packages.${system}.rea;
       });
 
     apps = forAllSystems (system: appsLib.mkApps system);

@@ -5,6 +5,13 @@
       name = "update";
       runtimeInputs = with pkgs; [curl jq nix nodejs python3 git];
       text = ''
+        # REA's approved complete native bundle cannot be realized on other hosts.
+        # Refuse before mutating any pins rather than silently freezing REA.
+        updater_system="${system}"
+        if [ "$updater_system" != x86_64-linux ]; then
+          echo "Full update (including REA) requires an x86_64-linux updater host." >&2
+          exit 1
+        fi
         build_roots=$(mktemp -d "''${TMPDIR:-/tmp}/pi-nix-update.XXXXXX")
         echo "Keeping update build roots in $build_roots"
         npm_meta() {
@@ -173,6 +180,7 @@
 
         update_pi_package() {
           local attr="$1" npm_name="$2" lock_dir="$3" package_filter="''${4:-.}"
+          local source_file="''${5:-overlays/pi-packages/default.nix}"
           local encoded meta latest integrity tarball tmp
           encoded="$npm_name"
           if [[ "$npm_name" == @*/* ]]; then
@@ -180,6 +188,7 @@
           fi
           meta=$(npm_meta "$encoded")
           latest=$(echo "$meta" | jq -er '."dist-tags".latest')
+          [[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected stable npm release for $npm_name" >&2; exit 1; }
           integrity=$(echo "$meta" | jq -er --arg v "$latest" '.versions[$v].dist.integrity')
           tarball=$(echo "$meta" | jq -er --arg v "$latest" '.versions[$v].dist.tarball')
           [[ "$integrity" == sha512-* && "$tarball" == https://registry.npmjs.org/* ]] || {
@@ -198,13 +207,13 @@
           cp "$tmp/package/package-lock.json" "$lock_dir/package-lock.json"
           rm -rf "$tmp"
 
-          python3 - "$attr" "$latest" "$integrity" <<'PY'
+          python3 - "$attr" "$latest" "$integrity" "$source_file" <<'PY'
         import re
         import sys
         from pathlib import Path
 
-        attr, version, integrity = sys.argv[1:4]
-        path = Path("overlays/pi-packages/default.nix")
+        attr, version, integrity, source_file = sys.argv[1:5]
+        path = Path(source_file)
         text = path.read_text()
         body = r'(?:(?!^  [A-Za-z0-9_-]+ = ).)*?'
         pattern = rf'(^  {re.escape(attr)} = {body}version = ")[^"]+(";{body}hash = ")[^"]+(";{body}npmDepsHash = )[^;]+(;)'
@@ -220,7 +229,7 @@
         path.write_text(text)
         PY
 
-          resolve_build_hash "$attr" "overlays/pi-packages/default.nix" "npmDepsHash"
+          resolve_build_hash "$attr" "$source_file" "npmDepsHash"
         }
 
         update_release_input "pi-upstream" "earendil-works/pi"
@@ -241,8 +250,9 @@
         update_pi_package "pi-btw" "@narumitw/pi-btw" "pkgs/pi-btw" "del(.devDependencies, .peerDependencies)"
         update_pi_package "pi-goal" "@narumitw/pi-goal" "pkgs/pi-goal" "del(.devDependencies, .peerDependencies)"
         update_ponytail
+        update_pi_package "rea" "rea-agents" "pkgs/rea" "$(cat pkgs/rea/package-filter.jq)" "overlays/rea/default.nix"
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#hunk-review .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal --out-link "$build_roots/packages"
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#hunk-review .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal .#rea --out-link "$build_roots/packages"
         nix run .#fmt
       '';
     };

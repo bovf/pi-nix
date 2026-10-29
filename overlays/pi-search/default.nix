@@ -26,7 +26,7 @@ final: prev: let
     '';
   };
 
-  pythonEnv = prev.python3.withPackages (_: [py.mcp]);
+  pythonEnv = prev.python3.withPackages (_: [py.mcp py.jsonschema]);
 
   pi-search-mcp = prev.runCommand "pi-search-mcp-0.1.0" {} ''
     mkdir -p $out/bin
