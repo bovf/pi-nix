@@ -68,6 +68,11 @@ in {
         package = final.pi-subagents;
       };
 
+      badwater-swarm = {
+        name = "badwater-swarm";
+        package = final.badwater-swarm;
+      };
+
       remote-pi = {
         name = "remote-pi";
         package = final.remote-pi;
