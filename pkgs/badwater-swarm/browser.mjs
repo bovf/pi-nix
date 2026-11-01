@@ -33,7 +33,10 @@ export function requestAllowed(value, origins) {
   catch { return false; }
 }
 
+export const HELP = 'Usage: swarm-browser --url URL --output /absolute/new-directory [--allow-origin ORIGIN]\nCreates a fresh isolated Chromium profile; loopback only unless an exact origin is authorized. Writes desktop/mobile screenshots and axe evidence. No browser or filesystem changes for --help.';
+
 export function parseArguments(args) {
+  if (args.length === 1 && args[0] === '--help') return {help: true};
   const options = { extraOrigins: [] };
   for (let i = 0; i < args.length; i += 2) {
     const [flag, value] = args.slice(i, i + 2);
@@ -123,7 +126,7 @@ async function capture(options, paths, proxyRequest) {
   } finally { await browser.close(); }
 }
 
-async function launch(options, paths) {
+export async function launch(options, paths, {deadlineMs = DEADLINE_MS, spawnProcess = spawn, terminate = pid => process.kill(-pid, 'SIGKILL')} = {}) {
   // A new directory is mandatory: do not expose a pre-existing tree to browser content.
   await mkdir(options.output, { mode: 0o700 });
   const args = ['--unshare-all', '--die-with-parent', '--new-session',
@@ -136,11 +139,16 @@ async function launch(options, paths) {
     '--setenv', 'FONTCONFIG_FILE', paths.fontconfig,
     paths.node, fileURLToPath(import.meta.url), '--isolated-worker'];
   await new Promise((resolve, reject) => {
-    const child = spawn(paths.bwrap, args, { stdio: ['pipe', 'pipe', 'pipe'], detached: true,
+    const child = spawnProcess(paths.bwrap, args, { stdio: ['pipe', 'pipe', 'pipe'], detached: true,
       env: {} });
-    let requests = 0;
+    const invocation = new AbortController();
+    const inFlight = new Set();
+    let requests = 0, closing = false, timedOut = false;
     const lines = createInterface({ input: child.stdout });
-    lines.on('line', async line => {
+    const stop = () => { closing = true; invocation.abort(); lines.close(); };
+    lines.on('line', line => {
+      if (closing) return;
+      const work = (async () => {
       let id;
       try {
         if (line.length > 16_384) throw new Error('Proxy request too large');
@@ -150,7 +158,7 @@ async function launch(options, paths) {
           || !['GET', 'HEAD'].includes(request.method)
           || !requestAllowed(request.url, options.origins)) throw new Error('Proxy request refused');
         const response = await fetch(request.url, { method: request.method, redirect: 'manual',
-          signal: AbortSignal.timeout(10_000), headers: { 'accept-encoding': 'identity' } });
+          signal: AbortSignal.any([invocation.signal, AbortSignal.timeout(10_000)]), headers: { 'accept-encoding': 'identity' } });
         const headers = Object.fromEntries(response.headers);
         const chunks = [];
         let size = 0;
@@ -162,20 +170,25 @@ async function launch(options, paths) {
         // Fetch decodes transport encoding, so do not forward the encoded length.
         delete headers['content-encoding'];
         delete headers['content-length'];
-        child.stdin.write(JSON.stringify({ id, status: response.status, headers,
+        if (!closing && !child.stdin.destroyed) child.stdin.write(JSON.stringify({ id, status: response.status, headers,
           body: Buffer.concat(chunks).toString('base64') }) + '\n');
       } catch {
-        if (!child.stdin.destroyed) child.stdin.write(JSON.stringify({ id, error: 'Proxy request refused' }) + '\n');
+        if (!closing && !child.stdin.destroyed) child.stdin.write(JSON.stringify({ id, error: 'Proxy request refused' }) + '\n');
       }
+      })();
+      inFlight.add(work);
+      work.finally(() => inFlight.delete(work));
     });
     let stderr = '';
     child.stderr.on('data', bytes => { stderr = (stderr + bytes).slice(-8192); });
-    const timer = setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }, DEADLINE_MS);
-    child.on('error', error => { clearTimeout(timer); reject(error); });
+    const timer = setTimeout(() => { timedOut = true; stop(); try { terminate(child.pid); } catch {} }, deadlineMs);
+    child.on('error', error => { clearTimeout(timer); stop(); Promise.allSettled([...inFlight]).then(() => reject(error)); });
     child.on('exit', (code, signal) => {
-      clearTimeout(timer);
-      if (code === 0) resolve();
-      else reject(new Error(`Isolated browser failed (${signal ?? code}): ${stderr.trim()}`));
+      clearTimeout(timer); stop();
+      Promise.allSettled([...inFlight]).then(() => {
+        if (code === 0 && !timedOut) resolve();
+        else reject(new Error(`Isolated browser failed (${timedOut ? 'deadline' : signal ?? code}): ${stderr.trim()}`));
+      });
     });
     child.stdin.on('error', () => {});
     child.stdin.write(JSON.stringify(options) + '\n');
@@ -185,6 +198,9 @@ async function launch(options, paths) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
+    if (process.argv.length === 3 && process.argv[2] === '--help') {
+      console.log(HELP);
+    } else {
     const paths = JSON.parse(await readFile(new URL('./browser-paths.json', import.meta.url), 'utf8'));
     if (process.argv[2] === '--isolated-worker') {
       const lines = createInterface({ input: process.stdin });
@@ -215,6 +231,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     } else {
       const report = await launch(parseArguments(process.argv.slice(2)), paths);
       console.log(JSON.stringify({ report }));
+    }
     }
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

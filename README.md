@@ -128,8 +128,9 @@ and changes no provider/model defaults. The optional Linux-only
 private filesystem/network namespaces, with explicit origin authorization and
 no host CDP/cookies. Home Manager opt-in and MCP/Context7 policy belong to
 `badwater-ai`; package presence alone does not authorize a swarm or browser run.
+Start with [workflow, approval, recovery and verified delivery](docs/swarm.md).
 See [packaging, settings precedence, licenses, browser interface and bounded
-validation](docs/swarm-packaging.md).
+validation](docs/swarm-packaging.md) for the producer contract.
 
 ## Consumer example
 

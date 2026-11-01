@@ -53,6 +53,7 @@ in
           node = "${node}/bin/node";
           git = "${prev.git}/bin/git";
           shell = "${prev.bash}/bin/bash";
+          runtimePath = lib.makeBinPath (lib.optional prev.stdenv.hostPlatform.isLinux prev.procps);
           browser =
             if browserSupported
             then "${final.badwater-swarm-browser}/bin/swarm-browser"
@@ -106,7 +107,7 @@ in
       installCheckPhase = ''
         export HOME="$TMPDIR/home"
         mkdir -p "$HOME"
-        ${node}/bin/node --test ${runtimeSource}/tests/browser-policy.test.mjs
+        ${node}/bin/node --test ${runtimeSource}/tests/browser-policy.test.mjs ${runtimeSource}/tests/browser-lifecycle.test.mjs
       '';
       passthru = {inherit node driver browsers axe;};
       meta = {

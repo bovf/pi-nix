@@ -98,6 +98,16 @@
             touch "$out"
           '';
         archimedes-footer = self.packages.${system}.pi-archimedes;
+        badwater-swarm-native =
+          pkgs.runCommand "badwater-swarm-native-tests" {
+            nativeBuildInputs = [core.nodejs pkgs.git pkgs.bash pkgs.coreutils];
+          } ''
+            export HOME="$TMPDIR/home" XDG_STATE_HOME="$TMPDIR/state" PI_OFFLINE=1 GIT_CONFIG_NOSYSTEM=1 SWARM_NATIVE_FIXTURE=1
+            mkdir -p "$HOME" "$TMPDIR/work"
+            cd "$TMPDIR/work"
+            timeout --kill-after=5s 120s node ${./pkgs/badwater-swarm/tests/native.mjs} ${self.packages.${system}.badwater-swarm}
+            touch "$out"
+          '';
         badwater-swarm =
           pkgs.runCommand "badwater-swarm-runtime-tests" {
             nativeBuildInputs = [core.nodejs pkgs.git pkgs.bash pkgs.coreutils];

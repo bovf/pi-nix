@@ -33,6 +33,7 @@ Generated `paths.json` is a flat object (all non-null paths absolute):
   "node": "/nix/store/<host-node>/bin/node",
   "git": "/nix/store/<git>/bin/git",
   "shell": "/nix/store/<bash>/bin/bash",
+  "runtimePath": "/nix/store/<procps>/bin",
   "browser": "/nix/store/<browser-package>/bin/swarm-browser",
   "pi": "/nix/store/<pi>/lib/pi/node_modules/@earendil-works/pi-coding-agent",
   "subagents": "/nix/store/<pi-subagents>"
@@ -41,7 +42,10 @@ Generated `paths.json` is a flat object (all non-null paths absolute):
 
 `browser` is null on unsupported platforms. Browser is a separate derivation;
 it never depends on the swarm runtime package, avoiding a dependency cycle.
-Nix store paths retain string context in generated JSON.
+Nix store paths retain string context in generated JSON. The extension adds the
+managed `runtimePath` to this Pi process's PATH (deduplicated); native host-step
+cleanup requires `ps`, including in minimal shells. It changes no shell files or
+persistent settings. Native host commands also require the platform's `/bin/sh`.
 
 Runtime settings are `badwaterSwarm` in Pi's
 `~/.pi/agent/settings.json` (Home Manager producer:
@@ -145,11 +149,13 @@ claim of execution.
 
 ```sh
 export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 1\ncores = 3'
-nix build .#badwater-swarm .#checks.x86_64-linux.badwater-swarm --no-link
+nix build .#badwater-swarm .#checks.x86_64-linux.badwater-swarm \
+  .#checks.x86_64-linux.badwater-swarm-native --no-link
 nix build .#badwater-swarm-browser --no-link
 SWARM_BROWSER_COMMAND=/nix/store/<built-browser>/bin/swarm-browser \
   node --test pkgs/badwater-swarm/tests/browser-smoke.test.mjs
-node --test pkgs/badwater-swarm/tests/browser-policy.test.mjs
+node --test pkgs/badwater-swarm/tests/browser-policy.test.mjs \
+  pkgs/badwater-swarm/tests/browser-lifecycle.test.mjs
 nix flake check --no-build --all-systems
 ```
 
@@ -163,5 +169,11 @@ starts only synthetic loopback fixtures, verifies two PNGs and real axe
 `button-name` findings, and proves disallowed origin/redirect/POST traffic never
 reaches a second synthetic listener. It checks WebSocket/download blocking too.
 No real service, model call, cookies, production page or login is used.
-Final runtime package/native host acceptance belongs to the integrated parent
-checkout; browser-only evidence does not certify swarm orchestration or policy.
+The native check loads the actual installed SDK/package roles/skill, requires
+zero resource warnings, validates both named resources, exercises real host
+prepare/large-plan collect calls, approval refusal/race and shutdown, and runs
+the entire build script through the native workflow engine with explicitly
+emulated leaves and real Git/check/gate/integration operations. This offline
+fixture is not a live-model claim. The separate quota-consuming CLI/RPC pilot
+and its boundaries are documented in [swarm.md](swarm.md); it is never automatic
+CI. Browser-only evidence does not certify orchestration or policy.
