@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {pathToFileURL} from 'node:url';
-import {ROOT, hash, ensure, settings, identifier, relative, beneath, privateDirectory, readJson, writeJson, command, git, repository, snapshot, runDirectory, locked, validatePlan, validateReview, readyTasks, loadPaths, documentationPath} from './lib.mjs';
+import {ROOT, hash, ensure, settings, identifier, relative, beneath, privateDirectory, readJson, writeJson, command, git, repository, snapshot, runDirectory, locked, validatePlan, validateReview, readyTasks, loadPaths, documentationPath, commitSubject} from './lib.mjs';
 
 const manifest = directory => path.join(directory, 'run.json');
 function load(input) {
@@ -117,7 +117,7 @@ function assertIntegration(run) {
   ensure(current.clean && current.head === run.build.head, 'Integration checkout changed; preserve and inspect it');
 }
 function commit(cwd, title) {
-  git(cwd, ['-c', 'user.name=Badwater Senior Swarm', '-c', 'user.email=badwater-senior-swarm@localhost', '-c', 'commit.gpgsign=false', 'commit', '-m', title]);
+  git(cwd, ['-c', 'user.useConfigOnly=true', '-c', 'commit.gpgsign=false', 'commit', '-m', title]);
   return git(cwd, ['rev-parse', 'HEAD']).stdout.trim();
 }
 function runChecks(cwd, checks, receiptDirectory) {
@@ -175,7 +175,17 @@ export function taskCheck(input, cwd = process.cwd()) {
   }
   const before = snapshot(actual);
   const captured = capturePatch(actual, item.base, task.paths, directory, item.key);
-  if (task.role === 'librarian') ensure(captured.paths.every(documentationPath), 'Librarian tasks may change documentation files only (.md/.mdx/.rst/.adoc)');
+  if (task.role === 'librarian') {
+    ensure(captured.paths.every(documentationPath), 'Librarian tasks may change documentation files or scoped documentation PNG assets only');
+    for (const file of captured.paths.filter(file => /\.png$/i.test(file))) {
+      const target = path.join(actual, file);
+      if (fs.existsSync(target)) {
+        ensure(fs.statSync(target).size <= 24 * 1024 * 1024, 'Documentation PNG exceeds its byte limit');
+        const bytes = fs.readFileSync(target);
+        ensure(bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) && bytes.toString('ascii', 12, 16) === 'IHDR' && bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(20) > 0 && bytes.readUInt32BE(16) * bytes.readUInt32BE(20) <= 32000000, 'Documentation asset is not a bounded PNG');
+      }
+    }
+  }
   const checks = runChecks(actual, task.verify, path.join(directory, 'checks', item.key));
   ensure(snapshot(actual).digest === before.digest, 'Verification mutated repository source; capture and inspect it, do not integrate');
   const {content, ...patch} = captured;
@@ -196,10 +206,12 @@ function integrate(run, directory) {
     const info = fs.lstatSync(file); ensure(info.isFile() && info.nlink === 1 && !info.isSymbolicLink(), 'Unsafe patch artifact');
     ensure(hash(fs.readFileSync(file)) === receipt.patch.hash, 'Patch changed after verification');
     const cwd = run.build.integration;
+    const title = commitSubject(run.plan.tasks.find(task => task.id === item.taskId));
+    for (const identity of ['GIT_AUTHOR_IDENT', 'GIT_COMMITTER_IDENT']) git(cwd, ['-c', 'user.useConfigOnly=true', 'var', identity]);
     assertIntegration(run);
     git(cwd, ['apply', '--check', '--index', file]);
     git(cwd, ['apply', '--index', file]);
-    run.build.head = commit(cwd, `feat(badwater-senior-swarm): ${item.taskId} pass ${run.build.cycle}`);
+    run.build.head = commit(cwd, title);
     run.build.completed = [...new Set([...run.build.completed, item.taskId])];
     run.build.integrated.push({key: item.key, taskId: item.taskId, head: run.build.head, patchHash: receipt.patch.hash, checks: receipt.checks});
     run.build.pending = run.build.pending.filter(x => x.key !== item.key);

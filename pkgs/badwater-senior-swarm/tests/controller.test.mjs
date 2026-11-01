@@ -209,7 +209,16 @@ test('approved Librarian patches are documentation-only and actual whitespace fa
     fs.writeFileSync(path.join(cwd,'README.md'),kind==='whitespace'?'# Example  \n':'# Example\n\nSee [sum.mjs](sum.mjs).\n');
     if(kind==='code')fs.appendFileSync(path.join(cwd,'sum.mjs'),'// not documentation\n');
     if(kind==='valid'){const receipt=taskCheck({...f.input,key:step.pending[0].key},cwd);assert.deepEqual(receipt.patch.paths,['README.md']);assert.equal(receipt.checks[0].status,0);const final=advance(f.input);assert(final.reviewRoles.includes('librarian'));}
-    else assert.throws(()=>taskCheck({...f.input,key:step.pending[0].key},cwd),kind==='code'?/documentation files only/:/Verification failed/);
+    else assert.throws(()=>taskCheck({...f.input,key:step.pending[0].key},cwd),kind==='code'?/documentation files/:/Verification failed/);
+  }
+});
+
+test('approved documentation PNG assets are scoped and signature/size checked',t=>{
+  for(const valid of [true,false]){
+    const f=fixture(t),task={id:'image',role:'librarian',title:'Document the verified screen',paths:['docs/assets/screen.png'],dependencies:[],criteria:['Approved capture only'],verify:[{argv:['git','diff','--check'],timeoutSeconds:30}]};
+    writeJson(path.join(f.directory,'reports/plan.json'),{...f.plan,tasks:[task]});collect(f.input);approve(f.directory,{confirmed:true,sessionId:'human'});const step=advance(f.input),cwd=worker(f,step);fs.mkdirSync(path.join(cwd,'docs/assets'),{recursive:true});
+    const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j0RkAAAAASUVORK5CYII=','base64');fs.writeFileSync(path.join(cwd,'docs/assets/screen.png'),valid?png:Buffer.from('not an image'));
+    if(valid)assert.deepEqual(taskCheck({...f.input,key:step.pending[0].key},cwd).patch.paths,['docs/assets/screen.png']);else assert.throws(()=>taskCheck({...f.input,key:step.pending[0].key},cwd),/bounded PNG/);
   }
 });
 

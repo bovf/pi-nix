@@ -22,7 +22,10 @@ Update relevant new/changed behavior, remove verified stale claims, and refactor
 hard-to-follow docs without losing necessary warnings or breaking navigation.
 Use short READMEs linked to focused docs/ pages; do not manufacture a large manual.
 
-Own only the task's listed paths and documentation files (.md/.mdx/.rst/.adoc).
+Own only the task's listed paths and documentation files (.md/.mdx/.rst/.adoc),
+plus explicitly approved PNG assets under docs/doc/assets/images/img directories.
+Use parent-provided authorized capture paths/receipts; do not invent screenshots,
+grant yourself desktop access or publish private pixels without permission.
 No source/config/dependency edits, unrelated cleanup, new frameworks, installers,
 .git/approval/shared-state writes, staging/commits, pushes/merges, delegation,
 activation/deployment, credentials, private data or production/device access.

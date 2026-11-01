@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 assert.equal(process.env.BADWATER_SENIOR_SWARM_NATIVE_FIXTURE,'1','Use the private native fixture launcher');
 const swarm=process.argv[2];assert(swarm?.startsWith('/nix/store/'));
 const paths=JSON.parse(fs.readFileSync(path.join(swarm,'paths.json'),'utf8'));
-const sdk=await import(pathToFileURL(path.join(paths.pi,'dist/index.js')));
+const sdk=await import(pathToFileURL(path.join(paths.pi,'dist/index.js')));sdk.initTheme('dark',false);
 const {builtInExtensions}=await import(pathToFileURL(path.join(paths.pi,'dist/extensions/index.js')));
 const {git,snapshot,writeJson,ROLES}=await import(pathToFileURL(path.join(swarm,'lib.mjs')));
 const controller=await import(pathToFileURL(path.join(swarm,'cli.mjs')));
@@ -83,6 +83,7 @@ try{
    assert(['badwater-senior-swarm.qa','badwater-senior-swarm.security','badwater-senior-swarm.librarian'].includes(params.agent));const current=controller.checkpoint(input);const report={status:'complete',verdict:'ok',head:current.build.head,summary:'Fixture inspected actual source/check receipts; no model call',findings:[]};writeJson(params.output,report);return {key,ok:true,agent:params.agent,output:'fixture review',structuredOutput:report,artifactPaths:[]};
   },
  });
+ const commits=git(integrated.value.integration,['log',`${before.head}..HEAD`,'--format=%an <%ae>%n%B']).stdout;assert(commits.includes('Fixture <fixture@localhost>'));assert(!/Badwater|\(swarm\)|badwater-senior-swarm\):|pass [0-9]|Co-authored-by:|Signed-off-by:/i.test(commits));
  assert.equal(integrated.value.phase,'complete');assert.equal(board.get('board').taskStatus.syntax.status,'completed');assert.equal(board.get('board').taskStatus.docs.status,'completed');assert.equal(controller.checkpoint(input).admissions,11);assert.deepEqual(snapshot(repo),before);
  assert.equal(loaded.extensions.filter(x=>x.commands.has('mcp')).length,1);assert.equal(loaded.extensions.find(x=>x.commands.has('mcp')).path,'builtin:mcp');
  console.log('PASS: installed native SDK/9 roles/10 profiles/skill/zero warnings, both workflow validators, headless and declined approval, exact host peers, one builtin MCP; no model calls');

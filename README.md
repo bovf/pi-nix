@@ -118,6 +118,13 @@ Each entry is shaped like:
 }
 ```
 
+## Screenshot evidence
+
+`badwater-screenshot` supplies a passive local MCP and explicit skill on Linux:
+headless web/code first, explicit Niri/KDE GUI targets, opt-in focus/clipboard
+side effects and separate model-image sharing. It changes no WM policy and
+publishes nothing automatically. [Modes, privacy and tests](docs/screenshot.md).
+
 ## GitLab client skill
 
 `pkgs.badwater-gitlab` packages an explicit read-first Pi skill and the managed

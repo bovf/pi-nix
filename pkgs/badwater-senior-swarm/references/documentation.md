@@ -40,6 +40,10 @@ No installer, generator or external service is required.
 - Exactly `git diff --check` is available as a bounded whitespace check when no
   project doc check exists. It covers tracked working-tree differences, not new
   untracked files, links, factual accuracy or UI; inspect new pages explicitly.
+- Screenshots require explicit target/data/sharing/publication permission. Use
+  parent-provided fresh captures and their SHA/time/target receipts, concise alt
+  text and factual captions. PNG assets must be explicitly scoped in the plan;
+  do not fabricate UI or crop away relevant warnings to improve appearance.
 - Fresh read-only Librarian review compares the integrated HEAD with source and
   approved scope. Missing/out-of-scope documentation blocks for a new approval,
   not a hidden extra edit. Report real coverage and unverified behavior plainly.

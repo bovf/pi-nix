@@ -7,8 +7,19 @@ import {fileURLToPath} from 'node:url';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export const ROLES = ['po', 'tech-lead', 'ux', 'ui', 'qa', 'security', 'devops', 'librarian'];
-export const documentationPath = file => /\.(md|mdx|rst|adoc)$/i.test(file);
+export const documentationPath = file => /\.(md|mdx|rst|adoc)$/i.test(file) || /(^|\/)(docs|doc|assets|images|img)\/.+\.png$/i.test(file);
 export const READ_TOOLS = ['read', 'grep', 'find', 'ls', 'contact_supervisor'];
+export function commitSubject(task) {
+  let title = task.title.trim();
+  ensure(title && !/[\x00-\x1f\x7f]/.test(title) && !/(co-authored-by|signed-off-by)\s*:/i.test(title), 'Commit title must be one concise line without attribution trailers');
+  const conventional = /^(feat|fix|docs|refactor|test|perf|build|ci|chore|revert)(?:\([^)]*\))?!?:\s*(.+)$/i.exec(title);
+  const type = conventional?.[1].toLowerCase() || (task.role === 'librarian' ? 'docs' : /^(add|create|introduce|implement|enable|support)\b/i.test(title) ? 'feat' : 'fix');
+  title = (conventional?.[2] || title).replace(/\s+/g, ' ').trim();
+  const limit = 72 - type.length - 2;
+  if (title.length > limit) { const cut = title.slice(0, limit); title = cut.includes(' ') ? cut.slice(0, cut.lastIndexOf(' ')) : cut; }
+  ensure(title, 'Commit title has no human-readable subject');
+  return `${type}: ${title}`;
+}
 export const hash = value => crypto.createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');
 export function ensure(condition, message) { if (!condition) throw new Error(message); }
 export function loadPaths() {
@@ -134,6 +145,7 @@ export function validatePlan(plan) {
     ensure(Array.isArray(task.verify) && task.verify.length > 0 && task.verify.length <= 8, 'Task needs executable verification');
     const role = task.role ?? 'developer';
     ensure(['developer', 'librarian'].includes(role), 'Task role must be developer or librarian');
+    commitSubject({title: task.title, role});
     return {id, role, title: task.title, paths: task.paths.map(relative), dependencies: task.dependencies, criteria: task.criteria, verify: task.verify.map(validateCheck)};
   });
   for (const task of tasks) ensure(task.dependencies.every(x => ids.has(x) && x !== task.id), 'Unknown/self task dependency');

@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {getKeybindings, visibleWidth, Text, TuiMainScreen, TuiAltScreen, stripTerminalSequences} from '@earendil-works/pi-tui';
+import {initTheme} from '@earendil-works/pi-coding-agent';
 import {APPROVE, createApprovalReader, reviewDocument, confirmationText, reviewApproval} from '../approval-ui.mjs';
+initTheme('dark', false);
 
 const fixture = () => ({
   id: 'synthetic-review', repo: '/fixture/repo', goal: 'A bounded synthetic outcome',
@@ -18,6 +20,7 @@ function reader(run = fixture(), columns = 80, rows = 24) {
   const render = () => {
     const lines = component.render(terminal.columns);
     assert(lines.length <= Math.max(0, terminal.rows - 4));
+    assert(lines.every(line => visibleWidth(line) === terminal.columns), 'overlay must pad every row instead of leaking transcript text');
     for (const line of lines) assert(visibleWidth(line) <= terminal.columns, 'terminal width overflow');
     return lines;
   };
@@ -28,7 +31,7 @@ const startLine = lines => Number(lines.find(line => line.startsWith('Lines ')).
 test('review contains every effective plan field and exact check, with a bounded confirmation', () => {
   const run = fixture(), text = reviewDocument(run, '/fixture/review.json');
   for (const sentinel of ['Overall-acceptance-sentinel', 'Assumption-sentinel', 'Rollout-sentinel', 'Task-acceptance-sentinel', 'dependency-sentinel', 'src/example.mjs', '["node","--test","example.test.mjs"]', '37s', run.snapshot.digest, run.planHash, 'No push']) assert(text.includes(sentinel), sentinel);
-  assert(text.includes('Role: developer')); run.plan.tasks[0].role = 'librarian'; assert(reviewDocument(run, '/fixture/review.json').includes('Role: librarian'));
+  assert(text.includes('**Owner:** developer')); run.plan.tasks[0].role = 'librarian'; assert(reviewDocument(run, '/fixture/review.json').includes('**Owner:** librarian')); assert(text.includes('### 1. Fix the fixture')); assert(text.includes('```json'));
   assert(text.includes(run.plan.summary)); assert(confirmationText(run).length < 700); assert(!confirmationText(run).includes(run.plan.summary));
 });
 
@@ -92,7 +95,7 @@ test('real regular/fullscreen renderers keep overlay controls visible through sc
 test('untrusted plan text cannot inject ANSI, OSC, control characters or bidi labels', () => {
   const run = fixture(); run.plan.summary = '\x1b[2J\x1b]52;c;fake\x07\u202e hidden\r\nRead me';
   const text = reviewDocument(run, '/fixture/review.json'); assert(!/[\x00-\x09\x0b-\x1f\x7f-\x9f\u202a-\u202e]/.test(text)); assert(text.includes('\\u001b')); assert(text.includes('\\u202e'));
-  const f = reader(run); assert(!f.render().join('\n').includes('\x1b'));
+  const f = reader(run); assert(!/[\x00-\x09\x0b-\x1f\x7f-\x9f]/.test(f.render().map(stripTerminalSequences).join('\n')));
 });
 
 test('RPC offers Cancel first and a compact decision plus complete private review artifact', async t => {

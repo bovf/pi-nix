@@ -1,5 +1,6 @@
 import path from 'node:path';
-import {ScrollView, Text, matchesKey, Key, truncateToWidth} from '@earendil-works/pi-tui';
+import {ScrollView, Text, Markdown, matchesKey, Key, truncateToWidth, visibleWidth} from '@earendil-works/pi-tui';
+import {getMarkdownTheme} from '@earendil-works/pi-coding-agent';
 import {ensure, writeJson} from './lib.mjs';
 
 export const APPROVE = 'Approve exact plan';
@@ -11,23 +12,25 @@ const bullets = values => Array.isArray(values) ? values.map(value => '- ' + val
 export function reviewDocument(run, artifact) {
   const plan = run.plan;
   return displayText([
-    'BADWATER SENIOR SWARM — FULL APPROVAL REVIEW',
-    `Run: ${run.id}\nRepository: ${run.repo}\nSource: ${run.snapshot.head}\nBranch: ${run.snapshot.branch}\nSource digest: ${run.snapshot.digest}\nPlan SHA-256: ${run.planHash}`,
-    'Goal\n' + run.goal,
-    'Summary\n' + plan.summary,
-    'Overall acceptance\n' + bullets(plan.acceptance),
-    'Assumptions\n' + bullets(plan.assumptions),
-    ...plan.tasks.map(task => [
-      `TASK ${task.id}: ${task.title}`,
-      'Role: ' + (task.role || 'developer'),
-      'Dependencies: ' + (task.dependencies.join(', ') || '(none)'),
-      'Owned paths\n' + bullets(task.paths),
-      'Acceptance\n' + bullets(task.criteria),
-      'Exact verification commands (execute repository code)\n' + task.verify.map(check => `${JSON.stringify(check.argv)} — timeout ${check.timeoutSeconds}s`).join('\n'),
+    '# Plan overview', plan.summary,
+    '## Overall acceptance', bullets(plan.acceptance),
+    `## Tasks · ${plan.tasks.length}`,
+    ...plan.tasks.map((task, index) => [
+      `### ${index + 1}. ${task.title}`,
+      `**Owner:** ${task.role || 'developer'} · **Task:** ${task.id}`,
+      '**Depends on:** ' + (task.dependencies.join(', ') || 'None'),
+      '**Owned paths**\n' + bullets(task.paths.map(file => '`' + file + '`')),
+      '**Acceptance**\n' + bullets(task.criteria),
+      '**Exact checks · execute repository code**\n' + task.verify.map(check => `\`\`\`json\n${JSON.stringify(check.argv)}\n\`\`\`\nTimeout: ${check.timeoutSeconds}s`).join('\n\n'),
+      '---',
     ].join('\n\n')),
-    'Rollout\n' + plan.rollout,
-    'Authorization boundary\n' + AUTHORITY,
-    'Complete machine-readable review artifact\n' + artifact,
+    '## Assumptions', bullets(plan.assumptions),
+    '## Rollout', plan.rollout,
+    '## Authorization boundary', AUTHORITY,
+    '## Requested goal', run.goal,
+    '## Identity and evidence',
+    `- Run: ${run.id}\n- Repository: ${run.repo}\n- Source: ${run.snapshot.head}\n- Branch: ${run.snapshot.branch}\n- Source digest: ${run.snapshot.digest}\n- Plan SHA-256: ${run.planHash}`,
+    '**Complete machine-readable review**\n' + artifact,
   ].join('\n\n'));
 }
 
@@ -36,7 +39,7 @@ export function confirmationText(run) {
 }
 
 export function createApprovalReader(run, artifact, tui, theme, keybindings, done) {
-  const review = new ScrollView(new Text(reviewDocument(run, artifact), 0, 0), {scrollbar: 'hidden', overscroll: 'contain'});
+  const review = new ScrollView(new Markdown(reviewDocument(run, artifact), 0, 0, getMarkdownTheme(), undefined, {renderLatex: false, preserveBackslashEscapes: true}), {scrollbar: 'hidden', overscroll: 'contain'});
   const confirmation = new ScrollView(new Text(confirmationText(run), 0, 0), {scrollbar: 'hidden', overscroll: 'contain'});
   let confirming = false, selected = 0, width = 0;
   const active = () => confirming ? confirmation : review;
@@ -46,9 +49,15 @@ export function createApprovalReader(run, artifact, tui, theme, keybindings, don
     render(columns) {
       width = columns;
       const height = Math.max(0, Math.min(40, tui.terminal.rows - 4));
-      const clip = line => truncateToWidth(line, columns);
+      const clip = line => {
+        const text = truncateToWidth(line, columns);
+        const padded = text + ' '.repeat(Math.max(0, columns - visibleWidth(text)));
+        return theme.bg ? theme.bg('customMessageBg', padded) : padded;
+      };
       if (!fits()) return ['Resize to at least 38 columns × 12 rows.', 'Esc/q: Cancel; nothing will be approved.'].map(clip).slice(0, height);
-      const view = active(), lines = view.render(columns), bodyHeight = height - 7;
+      const compact = tui.terminal.rows < 14;
+      const view = active(), lines = view.render(columns), bodyHeight = height - (compact ? 7 : 9);
+      const divider = theme.fg('dim', '─'.repeat(columns));
       view.updateLayout(lines.length, bodyHeight, redraw);
       const body = lines.slice(view.scrollTop, view.scrollTop + bodyHeight);
       while (body.length < bodyHeight) body.push('');
@@ -56,9 +65,10 @@ export function createApprovalReader(run, artifact, tui, theme, keybindings, don
       return [
         theme.fg('accent', confirming ? 'Confirm exact plan — no changes applied yet' : 'Badwater Senior Swarm — read before approving'),
         `Run: ${run.id} | ${run.plan.tasks.length} tasks`,
-        `Source: ${run.snapshot.head}`,
-        `Plan: ${run.planHash}`,
+        ...(!compact ? [`Source: ${run.snapshot.head}`, `Plan: ${run.planHash}`] : []),
+        divider,
         ...body,
+        divider,
         `Lines ${view.scrollTop + 1}–${Math.min(lines.length, view.scrollTop + bodyHeight)} / ${lines.length}`,
         confirming ? 'Tab/←→ choose · b back · Esc cancel' : '↑↓ scroll · PgUp/PgDn page · Home/End',
         confirming ? choices : 'Enter: Continue | Esc/q: Cancel',

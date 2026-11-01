@@ -31,7 +31,8 @@ cancel an in-flight command or undo already-applied edits.
 ## Reading and approving long plans
 
 The reader keeps its header and controls visible; only the full plan body
-scrolls. Use **↑/↓**, **Page Up/Page Down**, **Home/End**, or the mouse wheel in
+scrolls. Markdown headings, numbered task cards, separators, fenced exact argv
+and opaque padded rows keep scope/checks readable without transcript bleed-through. Use **↑/↓**, **Page Up/Page Down**, **Home/End**, or the mouse wheel in
 fullscreen mode. Text wraps to the available width and reflows on resize.
 **Enter** opens a separate compact confirmation stage; it does not approve.
 The selection starts on **Cancel**. Use **Tab** or **←/→** to select
@@ -77,6 +78,11 @@ nine specialists, ten agent profiles, with no write tools in review.
    No justified work means an empty plan, not invented findings.
 5. Stop for human approval. Approval covers isolated worktrees, exact proposed
    checks and local checkpoint commits on a dedicated integration branch only.
+   Checkpoint subjects are concise descriptions from human task titles, without
+   automation scopes, task slugs, pass counters or attribution trailers. Commits use
+   the repository's existing author/committer identity; missing identity fails before
+   patch application, never inventing a bot. Existing history is not rewritten.
+
 6. Dispatch disjoint ready developer/documentation tasks into native managed worktrees.
    Source must be clean; never auto-stash, reset or drop isolation.
 7. Host gates reject no-change/out-of-scope/staged/symlink/submodule patches,
@@ -149,7 +155,7 @@ commands/rules/network use and fail-closed outcomes, not blanket security proof.
 
 Native x86_64 Linux acceptance covers:
 
--44 controller/workflow/branding/approval-UI/Librarian tests;5 browser policy/lifecycle tests and one real
+-47 controller/workflow/branding/approval-UI/Librarian/commit tests;5 browser policy/lifecycle tests and one real
   isolated Chromium/axe synthetic smoke (no skipped smoke when enabled).
 - Installed Pi1.4.0/subagents0.84 package/skill/nine-role/ten-profile discovery, zero resource
   warnings, exact host-peer identity, named script validation and lifecycle.

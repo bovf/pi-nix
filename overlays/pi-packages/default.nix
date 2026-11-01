@@ -119,6 +119,10 @@ in {
       };
     }
     // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+      badwater-screenshot = {
+        name = "badwater-screenshot";
+        package = final.badwater-screenshot;
+      };
       badwater-video = {
         name = "badwater-video";
         package = final.badwater-video;

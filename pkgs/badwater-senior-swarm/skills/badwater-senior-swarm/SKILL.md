@@ -27,6 +27,18 @@ skill and actual API before orchestrating; never invent tool names.
   Never reuse approval after source/plan drift. A changed Nix runtime package
   also requires a fresh reviewed run; do not migrate old approval silently.
 
+## Readable output and commits
+
+Read `../../references/presentation.md` when producing a plan or handoff. Use
+clear headings and blank lines, a short outcome-first overview, one checkable
+claim per acceptance bullet, and separate paths/dependencies/checks/risks. Show
+exact argv as code, not giant evidence paragraphs. Link full reports; do not paste
+a transcript into the summary or hide scope to shorten the approval screen.
+Keep task titles human, concise and descriptive. Checkpoint commits inherit the
+repository's Git identity and use concise subjects—no automation/package scope,
+task slug, pass counter, `Co-authored-by` or `Signed-off-by`. Missing identity
+must be configured by the human, never replaced by a bot. Do not rewrite history.
+
 ## Documentation is delivery
 
 Always include read-only `badwater-senior-swarm.librarian` in source and final

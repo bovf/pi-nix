@@ -1,0 +1,9 @@
+{
+  "name": "badwater-screenshot",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Explicit screenshot capture and documentation evidence with private artifacts and opt-in model sharing",
+  "keywords": ["pi-package"],
+  "pi": {"extensions": [], "skills": ["./skills/badwater-screenshot"]}
+}

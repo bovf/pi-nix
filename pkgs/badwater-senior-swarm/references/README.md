@@ -6,6 +6,8 @@ to execute commands. Only the parent may delegate, approve commands, admit agent
 and persist mission artifacts. Children return findings through their assigned
 channel. No reference grants shell/write/browser/network/model access.
 
+- [Readable plans and handoffs](presentation.md): concise sections, explicit
+  checks, useful evidence links and human commit subjects without bot attribution.
 - [Documentation / Librarian](documentation.md): locally authored source-first
   freshness checks, short READMEs, focused linked docs/ pages and verified changes.
 - [Engineering / Superpowers](superpowers/engineering.md): small plans, red/green,

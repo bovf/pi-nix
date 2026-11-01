@@ -41,6 +41,7 @@
     reaOverlay = import ./overlays/rea {};
     seniorSwarmOverlay = import ./overlays/badwater-senior-swarm {};
     gitlabOverlay = import ./overlays/badwater-gitlab {};
+    screenshotOverlay = import ./overlays/badwater-screenshot {};
 
     defaultOverlay = final: prev:
       (piVimOverlay final prev)
@@ -50,7 +51,8 @@
       // (videoOverlay final prev)
       // (reaOverlay final prev)
       // (seniorSwarmOverlay final prev)
-      // (gitlabOverlay final prev);
+      // (gitlabOverlay final prev)
+      // (screenshotOverlay final prev);
   in {
     overlays = {
       default = defaultOverlay;
@@ -62,6 +64,7 @@
       rea = reaOverlay;
       badwater-senior-swarm = seniorSwarmOverlay;
       badwater-gitlab = gitlabOverlay;
+      badwater-screenshot = screenshotOverlay;
     };
 
     packages = forAllSystems (system: let
@@ -79,7 +82,7 @@
         default = pkgs.pi-coding-agent;
       }
       // nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-        inherit (pkgs) badwater-video badwater-craft-mcp badwater-senior-swarm-browser;
+        inherit (pkgs) badwater-video badwater-craft-mcp badwater-senior-swarm-browser badwater-screenshot;
       }
       // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
         inherit (pkgs) rea;
@@ -140,6 +143,17 @@
       // nixpkgs.lib.optionalAttrs (system != "aarch64-darwin") {
         badwater-video = self.packages.${system}.badwater-video;
         badwater-senior-swarm-browser = self.packages.${system}.badwater-senior-swarm-browser;
+        badwater-screenshot =
+          pkgs.runCommand "badwater-screenshot-tests" {
+            nativeBuildInputs = [self.packages.${system}.badwater-screenshot.pythonPackage core.nodejs pkgs.coreutils];
+          } ''
+            export HOME="$TMPDIR/home" XDG_STATE_HOME="$TMPDIR/state" XDG_CONFIG_HOME="$TMPDIR/config" PYTHONDONTWRITEBYTECODE=1 PI_OFFLINE=1 BADWATER_SCREENSHOT_FIXTURE=1
+            mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$TMPDIR/work"
+            cd "$TMPDIR/work"
+            python ${self.packages.${system}.badwater-screenshot}/tests/test_backend.py
+            timeout --kill-after=5s 90s node ${./tests/screenshot-native.mjs} ${core} ${self.packages.${system}.badwater-screenshot} ${self.packages.${system}.badwater-screenshot.pythonPackage}/bin/python
+            touch "$out"
+          '';
       }
       // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
         rea = self.packages.${system}.rea;

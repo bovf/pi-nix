@@ -25,8 +25,10 @@ shows the role and dependencies; they are included in the exact plan hash.
 
 Only an approved `role: librarian` task dispatches the writer, in its own managed
 worktree at the current integration head. The host gate requires a real scoped
-patch, permits only `.md`, `.mdx`, `.rst` or `.adoc` changes, and executes the
-approved checks. No application/configuration/dependency edits are authorized.
+patch, permits `.md`, `.mdx`, `.rst` or `.adoc` changes plus explicitly scoped
+bounded PNGs under documentation/image directories, and executes approved checks.
+Screenshots need target/data/sharing/publication permission and source receipts;
+the parent supplies captures, not ambient desktop tools. No application/configuration/dependency edits are authorized.
 If no project doc checker exists, exactly `git diff --check` is a supported
 tracked-diff whitespace check, not proof of new-file/link/content correctness.
 
