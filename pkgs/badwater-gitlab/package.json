@@ -1,0 +1,9 @@
+{
+  "name": "badwater-gitlab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Permission-first self-managed GitLab workflows with the managed glab CLI and Pi builtin MCP",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "pi": {"extensions": [], "skills": ["./skills/badwater-gitlab"]}
+}

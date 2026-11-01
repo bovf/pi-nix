@@ -40,6 +40,7 @@
     videoOverlay = import ./overlays/badwater-video {};
     reaOverlay = import ./overlays/rea {};
     seniorSwarmOverlay = import ./overlays/badwater-senior-swarm {};
+    gitlabOverlay = import ./overlays/badwater-gitlab {};
 
     defaultOverlay = final: prev:
       (piVimOverlay final prev)
@@ -48,7 +49,8 @@
       // (piCodingAgentOverlay final prev)
       // (videoOverlay final prev)
       // (reaOverlay final prev)
-      // (seniorSwarmOverlay final prev);
+      // (seniorSwarmOverlay final prev)
+      // (gitlabOverlay final prev);
   in {
     overlays = {
       default = defaultOverlay;
@@ -59,6 +61,7 @@
       badwater-video = videoOverlay;
       rea = reaOverlay;
       badwater-senior-swarm = seniorSwarmOverlay;
+      badwater-gitlab = gitlabOverlay;
     };
 
     packages = forAllSystems (system: let
@@ -71,6 +74,7 @@
       {
         inherit (pkgs) pi-vim pi-search pi-search-mcp rpiv-todo pi-archimedes pi-subagents remote-pi plannotator-pi-extension ponytail pi-wait-what pi-lsp pi-chrome-devtools pi-btw pi-goal pi-coding-agent;
         badwater-senior-swarm = pkgs.badwater-senior-swarm;
+        badwater-gitlab = pkgs.badwater-gitlab;
         hunk-review = pkgs.piPackages.hunk-review.package;
         default = pkgs.pi-coding-agent;
       }
@@ -98,6 +102,16 @@
             touch "$out"
           '';
         archimedes-footer = self.packages.${system}.pi-archimedes;
+        badwater-gitlab =
+          pkgs.runCommand "badwater-gitlab-native-tests" {
+            nativeBuildInputs = [core.nodejs pkgs.coreutils];
+          } ''
+            export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" PI_OFFLINE=1
+            mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$TMPDIR/work"
+            cd "$TMPDIR/work"
+            timeout --kill-after=5s 90s node ${./tests/gitlab-native.mjs} ${core} ${self.packages.${system}.badwater-gitlab}
+            touch "$out"
+          '';
         badwater-senior-swarm-native =
           pkgs.runCommand "badwater-senior-swarm-native-tests" {
             nativeBuildInputs = [core.nodejs pkgs.git pkgs.bash pkgs.coreutils];

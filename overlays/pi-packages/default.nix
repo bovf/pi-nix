@@ -68,6 +68,11 @@ in {
         package = final.pi-subagents;
       };
 
+      badwater-gitlab = {
+        name = "badwater-gitlab";
+        package = final.badwater-gitlab;
+      };
+
       badwater-senior-swarm = {
         name = "badwater-senior-swarm";
         package = final.badwater-senior-swarm;

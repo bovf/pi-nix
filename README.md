@@ -118,6 +118,13 @@ Each entry is shaped like:
 }
 ```
 
+## GitLab client skill
+
+`pkgs.badwater-gitlab` packages an explicit read-first Pi skill and the managed
+GLab CLI. It adds no startup extension or MCP proxy; Home Manager owns a disabled
+native HTTP MCP entry and the human authorizes each machine separately.
+[Package and offline checks](docs/gitlab.md).
+
 ## Badwater Senior Swarm
 
 `badwater-senior-swarm` packages parent-only, source/plan-bound review and build resources
