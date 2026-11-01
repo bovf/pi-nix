@@ -39,7 +39,7 @@
     piCodingAgentOverlay = import ./overlays/pi-coding-agent {inherit pi-upstream;};
     videoOverlay = import ./overlays/badwater-video {};
     reaOverlay = import ./overlays/rea {};
-    swarmOverlay = import ./overlays/badwater-swarm {};
+    seniorSwarmOverlay = import ./overlays/badwater-senior-swarm {};
 
     defaultOverlay = final: prev:
       (piVimOverlay final prev)
@@ -48,7 +48,7 @@
       // (piCodingAgentOverlay final prev)
       // (videoOverlay final prev)
       // (reaOverlay final prev)
-      // (swarmOverlay final prev);
+      // (seniorSwarmOverlay final prev);
   in {
     overlays = {
       default = defaultOverlay;
@@ -58,7 +58,7 @@
       pi-coding-agent = piCodingAgentOverlay;
       badwater-video = videoOverlay;
       rea = reaOverlay;
-      badwater-swarm = swarmOverlay;
+      badwater-senior-swarm = seniorSwarmOverlay;
     };
 
     packages = forAllSystems (system: let
@@ -70,12 +70,12 @@
     in
       {
         inherit (pkgs) pi-vim pi-search pi-search-mcp rpiv-todo pi-archimedes pi-subagents remote-pi plannotator-pi-extension ponytail pi-wait-what pi-lsp pi-chrome-devtools pi-btw pi-goal pi-coding-agent;
-        badwater-swarm = pkgs.badwater-swarm;
+        badwater-senior-swarm = pkgs.badwater-senior-swarm;
         hunk-review = pkgs.piPackages.hunk-review.package;
         default = pkgs.pi-coding-agent;
       }
       // nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-        inherit (pkgs) badwater-video badwater-craft-mcp badwater-swarm-browser;
+        inherit (pkgs) badwater-video badwater-craft-mcp badwater-senior-swarm-browser;
       }
       // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
         inherit (pkgs) rea;
@@ -98,25 +98,25 @@
             touch "$out"
           '';
         archimedes-footer = self.packages.${system}.pi-archimedes;
-        badwater-swarm-native =
-          pkgs.runCommand "badwater-swarm-native-tests" {
+        badwater-senior-swarm-native =
+          pkgs.runCommand "badwater-senior-swarm-native-tests" {
             nativeBuildInputs = [core.nodejs pkgs.git pkgs.bash pkgs.coreutils];
           } ''
-            export HOME="$TMPDIR/home" XDG_STATE_HOME="$TMPDIR/state" PI_OFFLINE=1 GIT_CONFIG_NOSYSTEM=1 SWARM_NATIVE_FIXTURE=1
+            export HOME="$TMPDIR/home" XDG_STATE_HOME="$TMPDIR/state" PI_OFFLINE=1 GIT_CONFIG_NOSYSTEM=1 BADWATER_SENIOR_SWARM_NATIVE_FIXTURE=1
             mkdir -p "$HOME" "$TMPDIR/work"
             cd "$TMPDIR/work"
-            timeout --kill-after=5s 120s node ${./pkgs/badwater-swarm/tests/native.mjs} ${self.packages.${system}.badwater-swarm}
+            timeout --kill-after=5s 120s node ${./pkgs/badwater-senior-swarm/tests/native.mjs} ${self.packages.${system}.badwater-senior-swarm}
             touch "$out"
           '';
-        badwater-swarm =
-          pkgs.runCommand "badwater-swarm-runtime-tests" {
+        badwater-senior-swarm =
+          pkgs.runCommand "badwater-senior-swarm-runtime-tests" {
             nativeBuildInputs = [core.nodejs pkgs.git pkgs.bash pkgs.coreutils];
           } ''
             export HOME="$TMPDIR/home" TMPDIR="$TMPDIR" PI_OFFLINE=1 GIT_CONFIG_NOSYSTEM=1
             mkdir -p "$HOME" "$TMPDIR/work"
-            cp -r ${./pkgs/badwater-swarm} "$TMPDIR/work/swarm"
-            chmod -R u+w "$TMPDIR/work/swarm"
-            cd "$TMPDIR/work/swarm"
+            cp -r ${./pkgs/badwater-senior-swarm} "$TMPDIR/work/badwater-senior-swarm"
+            chmod -R u+w "$TMPDIR/work/badwater-senior-swarm"
+            cd "$TMPDIR/work/badwater-senior-swarm"
             mapfile -t tests < <(find tests -maxdepth 1 -name '*.test.mjs' ! -name 'browser*.test.mjs' | sort)
             test "''${#tests[@]}" -gt 0
             timeout --kill-after=5s 120s node --test "''${tests[@]}"
@@ -125,7 +125,7 @@
       }
       // nixpkgs.lib.optionalAttrs (system != "aarch64-darwin") {
         badwater-video = self.packages.${system}.badwater-video;
-        badwater-swarm-browser = self.packages.${system}.badwater-swarm-browser;
+        badwater-senior-swarm-browser = self.packages.${system}.badwater-senior-swarm-browser;
       }
       // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
         rea = self.packages.${system}.rea;

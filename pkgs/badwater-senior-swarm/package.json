@@ -1,0 +1,11 @@
+{
+  "name": "badwater-senior-swarm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-driven senior team workflows using Pi's native subagent runtime",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "pi": {"extensions": ["./extension.mjs"], "skills": ["./skills/badwater-senior-swarm"]},
+  "pi-subagents": {"agents": ["./agents"]}
+}

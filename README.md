@@ -20,7 +20,7 @@ overlays.pi-coding-agent
 overlays.pi-vim
 overlays.pi-search
 overlays.pi-packages
-overlays.badwater-swarm
+overlays.badwater-senior-swarm
 
 packages.${system}.pi-coding-agent
 packages.${system}.pi-vim
@@ -38,9 +38,9 @@ packages.${system}.pi-lsp
 packages.${system}.pi-chrome-devtools
 packages.${system}.pi-btw
 packages.${system}.pi-goal
-packages.${system}.badwater-swarm
+packages.${system}.badwater-senior-swarm
 # Linux-only local runtimes:
-packages.${system}.badwater-swarm-browser
+packages.${system}.badwater-senior-swarm-browser
 packages.${system}.badwater-video
 packages.${system}.badwater-craft-mcp
 # x86_64-linux-only complete native/static bundle:
@@ -99,7 +99,7 @@ pkgs.piPackages.pi-lsp
 pkgs.piPackages.pi-chrome-devtools
 pkgs.piPackages.pi-btw
 pkgs.piPackages.pi-goal
-pkgs.piPackages.badwater-swarm
+pkgs.piPackages.badwater-senior-swarm
 ```
 
 `hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill. The packaged `pi-archimedes` leaves clipboard images to Pi core and delegation to `pi-subagents`, avoiding duplicate shortcuts and tools.
@@ -118,19 +118,19 @@ Each entry is shaped like:
 }
 ```
 
-## Approval-gated senior swarm
+## Badwater Senior Swarm
 
-`badwater-swarm` packages parent-only, source/plan-bound review and build resources
+`badwater-senior-swarm` packages parent-only, source/plan-bound review and build resources
 with exact host Pi/subagents peers and curated source-pinned Superpowers,
 Impeccable, Trail of Bits and Vercel references. It installs no global bootstrap
 and changes no provider/model defaults. The optional Linux-only
-`badwater-swarm-browser` provides finite fresh-profile Playwright/axe evidence in
+`badwater-senior-swarm-browser` provides finite fresh-profile Playwright/axe evidence in
 private filesystem/network namespaces, with explicit origin authorization and
 no host CDP/cookies. Home Manager opt-in and MCP/Context7 policy belong to
 `badwater-ai`; package presence alone does not authorize a swarm or browser run.
-Start with [workflow, approval, recovery and verified delivery](docs/swarm.md).
+Start with [workflow, approval, recovery and verified delivery](docs/badwater-senior-swarm.md).
 See [packaging, settings precedence, licenses, browser interface and bounded
-validation](docs/swarm-packaging.md) for the producer contract.
+validation](docs/badwater-senior-swarm-packaging.md) for the producer contract.
 
 ## Consumer example
 
