@@ -13,7 +13,7 @@ channel. No reference grants shell/write/browser/network/model access.
 - [Security / Trail of Bits](trail-of-bits/security.md): differential risk review,
   misuse-resistant boundaries, evidence and false-positive checks.
 - [Vercel React guidance](vercel-react/react.md): server authorization, waterfalls,
-  bundle cost; four verbatim technical rule examples in `vercel-react/rules/`.
+  bundle cost; five verbatim technical rule examples in `vercel-react/rules/`.
 - [Vercel web guidance](vercel-web/web.md): semantics, focus, forms, motion,
   responsive content, rendering evidence.
 

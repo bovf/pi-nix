@@ -3,7 +3,7 @@
 [Vercel agent-skills](https://github.com/vercel-labs/agent-skills/tree/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62),
 MIT as declared in retained UPSTREAM-SKILL.md; source paths/hashes in
 ../sources.json. This is a small modified selection, not all upstream rules.
-The four `rules/*.md` examples are unmodified source references, not installed
+The five `rules/*.md` examples are unmodified source references, not installed
 skills. Apply only when the actual project framework/version supports them.
 
 Prioritize measured critical paths before micro-optimizations:

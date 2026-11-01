@@ -124,8 +124,8 @@ Native x86_64 Linux acceptance covers:
 - A separate authorized live CLI/RPC pilot: eight real role admissions, one actual
   confirmation dialog, an isolated developer and executed Node test, serial local
   integration, fresh QA/security on the exact final head, caller source unchanged.
-  Accepted package: `/nix/store/qzznirad0iqm2dwwz1c2z1m32nrfcnjd-badwater-swarm-0.1.0`.
-  Local result: `/tmp/badwater-swarm-live.nUpaQuNN/result.json` (synthetic private
+  Accepted package: `/nix/store/k3r1iq2hv0lq0x3ydmmv61b7hnickqy6-badwater-swarm-0.1.0`.
+  Local result: `/tmp/badwater-swarm-live.KXyPAcfw/result.json` (synthetic private
   receipt, not a committed transcript or permanent remote service guarantee).
 
 Development probes exposed and fixed missing fixture CA/shell/process tools,

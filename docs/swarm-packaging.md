@@ -72,7 +72,7 @@ installer, CDP attachment, live fetching or deployment instructions:
 | `superpowers/engineering.md` | obra/superpowers, Jesse Vincent, MIT |
 | `impeccable/ui-ux.md` | pbakaus/impeccable, Paul Bakaus, Apache-2.0 |
 | `trail-of-bits/security.md` | trailofbits/skills contributors, CC-BY-SA-4.0 |
-| `vercel-react/react.md` + four verbatim rule examples | vercel-labs/agent-skills, Vercel Engineering, declared MIT |
+| `vercel-react/react.md` + five verbatim rule examples | vercel-labs/agent-skills, Vercel Engineering, declared MIT |
 | `vercel-web/web.md` | vercel-labs/web-interface-guidelines, Vercel Labs, MIT |
 
 Original license/notice files are retained. Vercel React has no standalone
