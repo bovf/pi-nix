@@ -52,9 +52,9 @@ try{
   lines.on('line',line=>{
    stdout.write(line+'\n');let event;try{event=JSON.parse(line);}catch{return fail(new Error('Non-JSON RPC output'));}
    if(event.type==='tool_execution_end'&&event.toolName==='subagent'&&event.result?.details?.mode==='workflow'&&event.result.details.asyncDir)workflowDirs.add(event.result.details.asyncDir);
-   if(event.type==='extension_ui_request'&&event.method==='confirm'){
-    try{assert.equal(event.title,'Approve this exact swarm plan?');assert(approvalSent);assert(event.message.includes('Exact verification commands'));assert(event.message.includes('No push'));dialogs++;assert.equal(dialogs,1);send({type:'extension_ui_response',id:event.id,confirmed:true});}catch(error){send({type:'extension_ui_response',id:event.id,confirmed:false});fail(error);}
-   }else if(event.type==='extension_ui_request'&&['select','input','editor'].includes(event.method)){send({type:'extension_ui_response',id:event.id,cancelled:true});fail(new Error('Unexpected pilot decision request'));}
+   if(event.type==='extension_ui_request'&&event.method==='select'){
+    try{assert(event.title.startsWith('Approve this exact swarm plan?\n'));assert(approvalSent);assert.deepEqual(event.options,['Cancel','Approve exact plan']);const current=readJson(runFile);assert(event.title.includes(current.planHash));assert(event.title.includes('No push'));assert(event.title.length<800);const review=readJson(path.join(path.dirname(runFile),'approval-review-'+current.planHash+'.json'));assert.deepEqual(review.plan,current.plan);assert.equal(review.source.digest,current.snapshot.digest);dialogs++;assert.equal(dialogs,1);send({type:'extension_ui_response',id:event.id,value:'Approve exact plan'});}catch(error){send({type:'extension_ui_response',id:event.id,cancelled:true});fail(error);}
+   }else if(event.type==='extension_ui_request'&&['confirm','input','editor'].includes(event.method)){send({type:'extension_ui_response',id:event.id,cancelled:true});fail(new Error('Unexpected pilot decision request'));}
    if(event.type==='extension_error'||event.type==='error'||(event.type==='response'&&event.success===false)||(event.type==='auto_retry_end'&&event.success===false))fail(new Error('Actual CLI/RPC or provider retries failed; inspect private evidence'));
    // Native settled events, not filesystem polling or racy recursive watches,
    // authorize sending the next operator command while the parent is idle.

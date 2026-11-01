@@ -114,7 +114,7 @@
           } ''
             export HOME="$TMPDIR/home" TMPDIR="$TMPDIR" PI_OFFLINE=1 GIT_CONFIG_NOSYSTEM=1
             mkdir -p "$HOME" "$TMPDIR/work"
-            cp -r ${./pkgs/badwater-senior-swarm} "$TMPDIR/work/badwater-senior-swarm"
+            cp -r ${self.packages.${system}.badwater-senior-swarm} "$TMPDIR/work/badwater-senior-swarm"
             chmod -R u+w "$TMPDIR/work/badwater-senior-swarm"
             cd "$TMPDIR/work/badwater-senior-swarm"
             mapfile -t tests < <(find tests -maxdepth 1 -name '*.test.mjs' ! -name 'browser*.test.mjs' | sort)

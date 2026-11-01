@@ -18,7 +18,8 @@ Both review and build requests first produce a source-backed plan. They do not
 run application checks or edit application source during review. The parent
 reads the full plan, exact proposed verification argv and coverage gaps, then
 stops. The operator runs `/badwater-senior-swarm-approve <runDirectory>` and confirms that exact
-plan in an interactive dialog. Headless approval fails closed; changed source,
+plan in a bounded, read-only terminal viewer, then an explicit confirmation.
+Headless approval fails closed; changed source,
 branch, plan or Nix runtime package requires fresh review/confirmation. The
 command queues continuation through the parent, not an independent writer.
 
@@ -26,6 +27,27 @@ command queues continuation through the parent, not an independent writer.
 `/badwater-senior-swarm-revoke <runDirectory>` revokes future admission/gates and retains the
 checkpoint. Stop the native workflow and children first: revocation cannot
 cancel an in-flight command or undo already-applied edits.
+
+## Reading and approving long plans
+
+The reader keeps its header and controls visible; only the full plan body
+scrolls. Use **↑/↓**, **Page Up/Page Down**, **Home/End**, or the mouse wheel in
+fullscreen mode. Text wraps to the available width and reflows on resize.
+**Enter** opens a separate compact confirmation stage; it does not approve.
+The selection starts on **Cancel**. Use **Tab** or **←/→** to select
+**Approve exact plan**, then **Enter**. **b** returns to the reader; **Esc**,
+**Ctrl-C** or **q** cancels either stage without changing approval. Terminals
+smaller than38 columns ×12 rows cannot approve until resized.
+
+The complete document includes overall acceptance, assumptions, dependencies,
+owned paths, task criteria, exact argv/timeouts, rollout and authorization limits.
+Repository/model terminal-control characters are shown literally, not executed.
+Each attempt also writes a private0600 `approval-review-<planHash>.json` containing
+source identity and the full plan. RPC clients receive that file path and a
+bounded **Cancel / Approve exact plan** selection, not unsupported custom TUI or
+an oversized message. Opening a reader/artifact grants no authority. The
+controller revalidates the original displayed plan/source under its lock after
+confirmation; changes during either stage require a fresh review.
 
 ## Naming upgrade
 
@@ -124,7 +146,7 @@ commands/rules/network use and fail-closed outcomes, not blanket security proof.
 
 Native x86_64 Linux acceptance covers:
 
--31 controller/workflow/branding tests;5 browser policy/lifecycle tests and one real
+-40 controller/workflow/branding/approval-UI tests;5 browser policy/lifecycle tests and one real
   isolated Chromium/axe synthetic smoke (no skipped smoke when enabled).
 - Installed Pi1.4.0/subagents0.84 package/skill/eight-role discovery, zero resource
   warnings, exact host-peer identity, named script validation and lifecycle.

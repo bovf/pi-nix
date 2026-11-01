@@ -87,11 +87,15 @@ record an approval decision as waiting when appropriate. Do not call mission
 completion a delivered implementation: review stops at awaiting-approval.
 
 The human must run `/badwater-senior-swarm-approve <runDirectory>` and confirm the exact plan in
-Pi's interactive dialog. Headless/model-authored approval is refused by the
-command. Approval covers isolated developer worktrees, exact proposed checks,
+Pi's read-only scrollable reader, then its separate Cancel-default confirmation.
+Use arrows/Page Up/Page Down/Home/End to read; Enter continues, Tab selects the
+final action, and Esc cancels. RPC uses a complete private review artifact and
+compact Cancel-first selection. Opening the reader is not approval; never select
+on the human's behalf. Headless/model-authored approval is refused by the command. Approval covers isolated developer worktrees, exact proposed checks,
 and local integration-branch checkpoint commits only. It does not cover push,
 main merge, deployments, credential use or production access. Declining changes
-nothing; dirty source must be resolved by the user, never stashed/reset by us.
+no source or approval; read-only review artifacts may remain. Dirty source must
+be resolved by the user, never stashed/reset by us.
 
 After confirmed approval, launch the next phase with the same id and mission:
 

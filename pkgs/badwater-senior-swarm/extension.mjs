@@ -46,12 +46,12 @@ export default async function badwaterSeniorSwarm(pi) {
     description: 'Inspect and approve the exact reviewed swarm plan for local isolated implementation',
     handler: async (args, ctx) => {
       ensure(ctx.hasUI, 'Swarm approval requires interactive human confirmation; headless approval is refused');
+      ensure(args.trim(), 'Usage: /badwater-senior-swarm-approve <runDirectory>');
       const directory = path.resolve(args.trim());
       const run = approvalDetails(directory);
       ensure(repository(ctx.cwd) === run.repo, 'Approve from the reviewed source repository');
-      const commands = run.plan.tasks.flatMap(t => t.verify.map(check => `${t.id}: ${JSON.stringify(check.argv)} (${check.timeoutSeconds}s)`));
-      const text = [`Goal: ${run.goal}`, `Source: ${run.snapshot.head}`, `Plan SHA-256: ${run.planHash}`, run.plan.summary, ...run.plan.tasks.map(t => `${t.id}: ${t.title}\n  Paths: ${t.paths.join(', ')}\n  Acceptance: ${t.criteria.join('; ')}`), 'Exact verification commands (these execute repository code):', ...commands, 'Authorize isolated developer worktrees, serial integration and local checkpoint commits on a dedicated swarm branch. Your source branch is not edited. No push, main merge, activation, deployment, credentials or production access. Worktrees/tool filters are not an OS sandbox.'].join('\n\n');
-      if (!(await ctx.ui.confirm('Approve this exact swarm plan?', text))) { ctx.ui.notify('Swarm plan remains unapproved.', 'info'); return; }
+      const {reviewApproval} = await import('./approval-ui.mjs');
+      if (!(await reviewApproval(run, directory, ctx))) { ctx.ui.notify('Swarm plan remains unapproved.', 'info'); return; }
       const approved = approve(directory, {confirmed: true, sessionId: ctx.sessionManager.getSessionId(), planHash: run.planHash, sourceDigest: run.snapshot.digest});
       ctx.ui.notify(`Approved ${approved.id}; continuing through the parent coordinator.`, 'info');
       pi.sendUserMessage(`The human explicitly approved swarm ${approved.id} (plan ${run.planHash}). Inspect its existing mission and continue the local badwater-senior-swarm.build phase with args {id:${JSON.stringify(approved.id)}} and the same missionId. Publishing, main merges, activation and deployment remain unauthorized.`, {deliverAs: 'followUp'});

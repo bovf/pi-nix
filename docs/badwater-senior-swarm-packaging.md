@@ -4,7 +4,7 @@ This producer exports `pkgs.badwater-senior-swarm`,
 `pkgs.piPackages.badwater-senior-swarm = { name = "badwater-senior-swarm"; package = pkgs.badwater-senior-swarm; }`,
 `packages.<system>.badwater-senior-swarm` and `overlays.badwater-senior-swarm` (also composed
 into `overlays.default`). The package root is the copied `pkgs/badwater-senior-swarm`
-runtime: manifest, extension, library, CLI, workflows, roles, skill, references
+runtime: manifest, extension, library, CLI, `approval-ui.mjs`, workflows, roles, skill, references
 and tests. `bin/badwater-senior-swarm` invokes the installed CLI with managed Node.
 There is no npm install, runtime downloader, global bootstrap or configuration
 mutation at package installation time.
@@ -16,6 +16,9 @@ Use the extension's named `badwater-senior-swarm.review` and `badwater-senior-sw
 resources through Pi/subagents, not raw workflow-file launches that could bypass
 the approval/state gates. Build approval requires the interactive
 `/badwater-senior-swarm-approve` flow bound to the plan/source; headless approval fails closed.
+The host Pi TUI peer supplies Text/ScrollView for a bounded two-stage reader;
+no second renderer, pager dependency or browser UI is added. RPC uses a private
+complete review artifact plus a compact Cancel-first selection.
 
 ## Exact host dependencies and paths
 
