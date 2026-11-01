@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {pathToFileURL} from 'node:url';
-import {ROOT, hash, ensure, settings, identifier, relative, beneath, privateDirectory, readJson, writeJson, command, git, repository, snapshot, runDirectory, locked, validatePlan, validateReview, readyTasks, loadPaths} from './lib.mjs';
+import {ROOT, hash, ensure, settings, identifier, relative, beneath, privateDirectory, readJson, writeJson, command, git, repository, snapshot, runDirectory, locked, validatePlan, validateReview, readyTasks, loadPaths, documentationPath} from './lib.mjs';
 
 const manifest = directory => path.join(directory, 'run.json');
 function load(input) {
@@ -43,7 +43,7 @@ export function admit(input) {
     else if (input.stage === 'specialists') {
       const technical = readJson(path.join(directory, 'reports/tech-lead.json'));
       ensure(technical.status === 'complete' && Array.isArray(technical.applicableRoles), 'Technical discovery incomplete');
-      names = [...new Set(['qa', 'security', ...technical.applicableRoles.filter(role => ['ui', 'ux', 'devops'].includes(role))])];
+      names = [...new Set(['qa', 'security', 'librarian', ...technical.applicableRoles.filter(role => ['ui', 'ux', 'devops'].includes(role))])];
     } else { ensure(input.stage === 'plan', 'Unknown review admission stage'); names = ['plan']; }
     const fresh = names.filter(name => !run.reviewClaims[name]);
     ensure(run.admissions + fresh.length <= run.config.maxAgents, 'Review agent budget exhausted before dispatch');
@@ -64,7 +64,7 @@ export function collect(input) {
     const {run} = load(input); assertSource(run);
     ensure(['reviewing', 'awaiting-approval'].includes(run.phase), 'Review cannot overwrite an approved/building run');
     const reports = fs.readdirSync(path.join(directory, 'reports')).filter(x => /^[a-z-]+\.json$/.test(x));
-    for (const required of ['po.json', 'tech-lead.json', 'qa.json', 'security.json', 'plan.json']) ensure(reports.includes(required), 'Missing mandatory review report');
+    for (const required of ['po.json', 'tech-lead.json', 'qa.json', 'security.json', 'librarian.json', 'plan.json']) ensure(reports.includes(required), 'Missing mandatory review report');
     for (const file of reports.filter(x => x !== 'plan.json')) {
       const report = readJson(path.join(directory, 'reports', file));
       ensure(report.status === 'complete' && Array.isArray(report.coverage) && Array.isArray(report.findings), 'Specialist did not finish; report the coverage gap');
@@ -72,7 +72,7 @@ export function collect(input) {
     const plan = validatePlan(readJson(path.join(directory, 'reports/plan.json')));
     ensure(reports.every(file => run.reviewClaims[file.slice(0, -5)]), 'Report has no durable child admission');
     run.plan = plan; run.planHash = hash(plan);
-    run.finalRoles = ['qa', 'security', ...['ui', 'ux'].filter(role => reports.includes(role + '.json'))];
+    run.finalRoles = ['qa', 'security', 'librarian', ...['ui', 'ux'].filter(role => reports.includes(role + '.json'))];
     ensure(run.admissions <= run.config.maxAgents, 'Review exceeded its child budget');
     writeJson(path.join(directory, 'plan.json'), plan);
     run.phase = plan.tasks.length ? 'awaiting-approval' : 'review-complete'; save(directory, run);
@@ -124,7 +124,8 @@ function runChecks(cwd, checks, receiptDirectory) {
   privateDirectory(receiptDirectory);
   return checks.map((check, index) => {
     const argv = [...check.argv]; if (argv[0] === 'node') argv[0] = loadPaths().node;
-    const execution = command(argv, cwd, {timeout: check.timeoutSeconds * 1000, allowFailure: true});
+    const options = {timeout: check.timeoutSeconds * 1000, allowFailure: true};
+    const execution = argv[0] === 'git' ? git(cwd, [...argv.slice(1), '--no-ext-diff', '--no-textconv'], options) : command(argv, cwd, options);
     const receipt = {argv: check.argv, cwd, head: git(cwd, ['rev-parse', 'HEAD']).stdout.trim(), ...execution};
     writeJson(path.join(receiptDirectory, `check-${index}.json`), receipt);
     ensure(!execution.error && execution.status === 0, `Verification failed; inspect private receipts in ${receiptDirectory}`);
@@ -174,6 +175,7 @@ export function taskCheck(input, cwd = process.cwd()) {
   }
   const before = snapshot(actual);
   const captured = capturePatch(actual, item.base, task.paths, directory, item.key);
+  if (task.role === 'librarian') ensure(captured.paths.every(documentationPath), 'Librarian tasks may change documentation files only (.md/.mdx/.rst/.adoc)');
   const checks = runChecks(actual, task.verify, path.join(directory, 'checks', item.key));
   ensure(snapshot(actual).digest === before.digest, 'Verification mutated repository source; capture and inspect it, do not integrate');
   const {content, ...patch} = captured;
@@ -237,7 +239,13 @@ export function advance(input) {
         const task = run.plan.tasks.find(t => t.id === f.taskId && t.paths.some(p => beneath(relative(f.path), p)));
         ensure(task, 'Finding needs edits outside approved task scope; obtain a new plan approval'); return task.id;
       }))];
-      run.build.completed = run.build.completed.filter(id => !repairs.includes(id));
+      // Rebuild dependent handoffs, including documentation, after upstream repairs.
+      const invalidated = new Set(repairs);
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const task of run.plan.tasks) if (!invalidated.has(task.id) && task.dependencies.some(id => invalidated.has(id))) { invalidated.add(task.id); changed = true; }
+      }
+      run.build.completed = run.build.completed.filter(id => !invalidated.has(id));
       run.build.repairs = material; run.build.cycle++; run.build.review = null;
     }
     const ready = readyTasks(run.plan.tasks, run.build.completed, run.config.maxConcurrent);
@@ -266,11 +274,11 @@ export function wireResult(action, value) {
   const out = {id: value.id, runDirectory: value.runDirectory, phase: value.phase, source: value.source, admissions: value.admissions, completed: value.completed, config: value.config && {maxConcurrent: value.config.maxConcurrent, maxAgents: value.config.maxAgents, maxRepairCycles: value.config.maxRepairCycles}};
   const planPath = value.runDirectory && path.join(value.runDirectory, 'plan.json');
   if (action === 'admit') out.slots = value.slots.map(slot => ({name: slot.name, cached: Boolean(slot.cached), reportPath: path.join(value.runDirectory, 'reports', slot.name + '.json')}));
-  if (action === 'collect') Object.assign(out, {planPath, planHash: value.planHash, taskCount: value.plan.tasks.length, taskIds: value.plan.tasks.map(task => task.id), next: value.next});
+  if (action === 'collect') Object.assign(out, {planPath, planHash: value.planHash, taskCount: value.plan.tasks.length, taskIds: value.plan.tasks.map(task => task.id), taskRoles: Object.fromEntries(value.plan.tasks.map(task => [task.id, task.role])), next: value.next});
   if (action === 'advance') {
     out.action = value.action;
     if (value.action === 'develop') {
-      Object.assign(out, {integration: value.integration, head: value.pending[0].base, planPath, pending: value.pending.map(item => ({taskId: item.taskId, key: item.key, base: item.base, title: item.task.title.slice(0, 100)}))});
+      Object.assign(out, {integration: value.integration, head: value.pending[0].base, planPath, pending: value.pending.map(item => ({taskId: item.taskId, key: item.key, base: item.base, role: item.task.role, title: item.task.title.slice(0, 100)}))});
       if (value.repairs?.length) { out.repairsPath = path.join(value.runDirectory, 'reports', `repairs-${value.admissions}.json`); writeJson(out.repairsPath, value.repairs); }
     } else if (value.action === 'review') {
       const checksPath = path.join(value.runDirectory, 'checks', `integrated-${value.head}`, 'summary.json'); writeJson(checksPath, value.checks);

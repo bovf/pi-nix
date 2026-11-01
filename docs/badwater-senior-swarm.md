@@ -63,24 +63,27 @@ start a fresh review rather than copying a prior approval.
 
 The parent is coordinator/Scrum master. Only it delegates or changes the shared
 board. Package roles are `badwater-senior-swarm.po`, `badwater-senior-swarm.tech-lead`, `badwater-senior-swarm.ux`, `badwater-senior-swarm.ui`,
-`badwater-senior-swarm.developer`, `badwater-senior-swarm.qa`, `badwater-senior-swarm.security`, `badwater-senior-swarm.devops`.
+`badwater-senior-swarm.developer`, `badwater-senior-swarm.qa`, `badwater-senior-swarm.security`, `badwater-senior-swarm.devops`, and `badwater-senior-swarm.librarian`.
+The [Librarian](librarian.md) has a separate gated `librarian-writer` profile:
+nine specialists, ten agent profiles, with no write tools in review.
 
 1. Snapshot the repository, branch and clean/dirty source state.
 2. PO/BPO and technical discovery establish users, requirements, invariants,
    scope/non-goals, acceptance assumptions and applicable specialists.
-3. QA/security and only relevant UI/UX/DevOps review independently.
+3. QA/security/Librarian and only relevant UI/UX/DevOps review independently.
 4. A fresh technical synthesis verifies/deduplicates findings and returns at
-   most12 bounded tasks with owned paths, dependency DAG, criteria and checks.
+   most12 bounded tasks with a developer/librarian role, owned paths, dependency
+   DAG, criteria and checks. Documentation follows the code tasks it describes.
    No justified work means an empty plan, not invented findings.
 5. Stop for human approval. Approval covers isolated worktrees, exact proposed
    checks and local checkpoint commits on a dedicated integration branch only.
-6. Dispatch disjoint ready developer tasks into native managed worktrees.
+6. Dispatch disjoint ready developer/documentation tasks into native managed worktrees.
    Source must be clean; never auto-stash, reset or drop isolation.
 7. Host gates reject no-change/out-of-scope/staged/symlink/submodule patches,
    run the approved checks and capture scoped patches. Serial integration
    commits only on the recorded `badwater-senior-swarm/<id>/integration` branch. Same-HEAD
    branch changes still block; nothing checks it back out automatically.
-8. Run integrated checks and fresh HEAD-qualified QA/security, plus relevant
+8. Run integrated checks and fresh HEAD-qualified QA/security/Librarian, plus relevant
    UI/UX. Material findings may trigger at most two approved-scope repair cycles.
    Unknown scope, failures or budgets produce a retained checkpoint, not success.
 9. Return the actual integration branch/head, result and evidence paths.
@@ -146,9 +149,9 @@ commands/rules/network use and fail-closed outcomes, not blanket security proof.
 
 Native x86_64 Linux acceptance covers:
 
--40 controller/workflow/branding/approval-UI tests;5 browser policy/lifecycle tests and one real
+-44 controller/workflow/branding/approval-UI/Librarian tests;5 browser policy/lifecycle tests and one real
   isolated Chromium/axe synthetic smoke (no skipped smoke when enabled).
-- Installed Pi1.4.0/subagents0.84 package/skill/eight-role discovery, zero resource
+- Installed Pi1.4.0/subagents0.84 package/skill/nine-role/ten-profile discovery, zero resource
   warnings, exact host-peer identity, named script validation and lifecycle.
 - Actual host prepare/collect with a plan larger than4KiB, headless/declined/raced
   approval, and the complete native build engine with explicitly emulated leaves

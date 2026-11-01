@@ -27,6 +27,18 @@ skill and actual API before orchestrating; never invent tool names.
   Never reuse approval after source/plan drift. A changed Nix runtime package
   also requires a fresh reviewed run; do not migrate old approval silently.
 
+## Documentation is delivery
+
+Always include read-only `badwater-senior-swarm.librarian` in source and final
+review. It checks stale claims, commands/options, links, new-feature guidance and
+human readability against actual source. Use explicit `role: librarian` plan
+tasks for necessary documentation work, dependent on the code they describe;
+they alone dispatch `librarian-writer` after approval. No unplanned extra edits.
+Keep README short and link worthwhile focused docs/ pages, without invented
+facts, duplicated manuals or arbitrary finding/page quotas. Read the local
+`../../references/documentation.md` checklist. Final review is fresh/read-only;
+upstream repairs rerun dependent documentation. Out-of-scope docs need new approval.
+
 ## Before launching
 
 Read applicable repo instructions, preserve its current branch/index/worktree,

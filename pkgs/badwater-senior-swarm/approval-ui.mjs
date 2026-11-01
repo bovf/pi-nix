@@ -19,6 +19,7 @@ export function reviewDocument(run, artifact) {
     'Assumptions\n' + bullets(plan.assumptions),
     ...plan.tasks.map(task => [
       `TASK ${task.id}: ${task.title}`,
+      'Role: ' + (task.role || 'developer'),
       'Dependencies: ' + (task.dependencies.join(', ') || '(none)'),
       'Owned paths\n' + bullets(task.paths),
       'Acceptance\n' + bullets(task.criteria),

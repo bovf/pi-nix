@@ -24,7 +24,7 @@ const loaded=loader.getExtensions();assert.deepEqual(loaded.errors,[]);assert.de
 assert.equal(loader.getSkills().skills.filter(x=>x.name==='badwater-senior-swarm').length,1);
 assert(!loader.getSkills().skills.some(x=>x.name==='swarm'),'retired skill remains discoverable');
 const agents=discoverAgents(repo,'both',undefined,{globalNpmRoot:null,projectTrusted:true});
-for(const name of [...ROLES,'developer']){const agent=agents.agents.find(x=>x.name==='badwater-senior-swarm.'+name);assert(agent,'missing '+name);assert.equal(agent.source,'package');assert.equal(agent.defaultContext,'fresh');assert.deepEqual(agent.extensions,[]);assert(!agent.tools.includes('subagent'));if(name!=='developer'){assert(!agent.tools.includes('bash'));assert(!agent.tools.includes('edit'));assert(!agent.tools.includes('write'));}}
+for(const name of [...ROLES,'developer','librarian-writer']){const agent=agents.agents.find(x=>x.name==='badwater-senior-swarm.'+name);assert(agent,'missing '+name);assert.equal(agent.source,'package');assert.equal(agent.defaultContext,'fresh');assert.deepEqual(agent.extensions,[]);assert(!agent.tools.includes('subagent'));if(!['developer','librarian-writer'].includes(name)){assert(!agent.tools.includes('bash'));assert(!agent.tools.includes('edit'));assert(!agent.tools.includes('write'));}}
 assert.equal(fs.realpathSync(path.join(swarm,'node_modules/@earendil-works/pi-coding-agent')),fs.realpathSync(paths.pi));assert.equal(fs.realpathSync(path.join(swarm,'node_modules/pi-subagents')),fs.realpathSync(paths.subagents));
 const runtime=await sdk.ModelRuntime.create({authPath:path.join(agentDir,'inert-auth.json'),modelsPath:null,refreshOnCreate:false,allowModelNetwork:false});
 const {session}=await sdk.createAgentSession({cwd:repo,agentDir,settingsManager,resourceLoader:loader,sessionManager:sdk.SessionManager.inMemory(repo),modelRuntime:runtime,model:{id:'inert',name:'Inert',provider:'fixture',api:'openai-completions',baseUrl:'http://127.0.0.1:1',reasoning:false,input:['text'],cost:{input:0,output:0,cacheRead:0,cacheWrite:0},contextWindow:8192,maxTokens:1}});
@@ -42,9 +42,9 @@ try{
   }
  }
  const input={repo,id:'native',goal:'Review fixture',config:{maxConcurrent:2,maxAgents:16,browserCommand:null}};
- const run=controller.prepare(input);const plan={summary:'Large source-located review evidence. '.repeat(300),acceptance:['valid syntax'],assumptions:[],rollout:'local',tasks:[{id:'syntax',title:'Document module',paths:['example.mjs'],dependencies:[],criteria:['valid syntax'],verify:[{argv:['node','--check','example.mjs'],timeoutSeconds:30}]}]};
+ const run=controller.prepare(input);const plan={summary:'Large source-located review evidence. '.repeat(300),acceptance:['valid syntax'],assumptions:[],rollout:'local',tasks:[{id:'syntax',title:'Document module',paths:['example.mjs'],dependencies:[],criteria:['valid syntax'],verify:[{argv:['node','--check','example.mjs'],timeoutSeconds:30}]},{id:'docs',role:'librarian',title:'Document verified module',paths:['README.md'],dependencies:['syntax'],criteria:['Matches integrated source'],verify:[{argv:['git','diff','--check'],timeoutSeconds:30}]}]};
  controller.admit({...input,stage:'discovery'});
- for(const role of ['po','tech-lead','qa','security'])writeJson(path.join(run.runDirectory,'reports',role+'.json'),{status:'complete',summary:'fixture',coverage:['source'],applicableRoles:[],findings:[]});controller.admit({...input,stage:'specialists'});controller.admit({...input,stage:'plan'});writeJson(path.join(run.runDirectory,'reports/plan.json'),plan);controller.collect(input);
+ for(const role of ['po','tech-lead','qa','security','librarian'])writeJson(path.join(run.runDirectory,'reports',role+'.json'),{status:'complete',summary:'fixture',coverage:['source'],applicableRoles:[],findings:[]});controller.admit({...input,stage:'specialists'});controller.admit({...input,stage:'plan'});writeJson(path.join(run.runDirectory,'reports/plan.json'),plan);controller.collect(input);
  const {executeWorkflowHostCommand}=await import(pathToFileURL(path.join(paths.subagents,'src/workflows/host-command.js')));
  const collected=await executeWorkflowHostCommand({key:'collect',params:reviewSetup.hosts.collect,cwd:repo,defaultOutputPath:path.resolve('native-collect.log'),signal:AbortSignal.timeout(30000)});assert(collected.ok,collected.error);assert(Buffer.byteLength(collected.stdout)<3500);assert(JSON.parse(collected.stdout).planPath);assert(!JSON.parse(collected.stdout).plan);
  const extension=loaded.extensions.find(x=>x.path.endsWith('/extension.mjs'));assert(extension);
@@ -73,15 +73,17 @@ try{
   status:()=>{throw new Error('No status polling in workflow');},
   launch:async(key,params,signal)=>{
    assert.equal(params.context,'fresh');
-   if(params.agent==='badwater-senior-swarm.developer'){
-    assert.equal(params.worktree,true);const worker=path.resolve('native-worker');git(repo,['worktree','add','-b','native-writer',worker,'HEAD']);fs.writeFileSync(path.join(worker,'example.mjs'),'export const value = 1; // native bridge fixture\n');
+   if(['badwater-senior-swarm.developer','badwater-senior-swarm.librarian-writer'].includes(params.agent)){
+    assert.equal(params.worktree,true);const docs=params.agent.endsWith('.librarian-writer');const worker=path.resolve(docs?'native-librarian':'native-worker');git(params.cwd,['worktree','add','-b',docs?'native-docs':'native-writer',worker,'HEAD']);
+    if(docs){assert(fs.readFileSync(path.join(worker,'example.mjs'),'utf8').includes('native bridge fixture'),'documentation ran before code integration');fs.writeFileSync(path.join(worker,'README.md'),'# Example\n\nExports `value = 1`. Source: [example.mjs](example.mjs).\n');}
+    else fs.writeFileSync(path.join(worker,'example.mjs'),'export const value = 1; // native bridge fixture\n');
     const gate=await executeWorkflowHostCommand({key:'task-gate',params:{kind:'command',command:params.acceptance.verify[0].command,timeoutMs:30000},cwd:worker,defaultOutputPath:path.resolve('native-task-gate.log'),signal});assert(gate.ok,gate.error);
-    return {key,ok:true,agent:params.agent,output:'Fixture leaf, no model call',structuredOutput:{status:'implemented',summary:'fixture',changedFiles:['example.mjs'],limitations:[]},artifactPaths:[]};
+    return {key,ok:true,agent:params.agent,output:'Fixture leaf, no model call',structuredOutput:{status:'implemented',summary:'fixture',changedFiles:[docs?'README.md':'example.mjs'],limitations:[]},artifactPaths:[]};
    }
-   assert(['badwater-senior-swarm.qa','badwater-senior-swarm.security'].includes(params.agent));const current=controller.checkpoint(input);const report={status:'complete',verdict:'ok',head:current.build.head,summary:'Fixture inspected actual source/check receipts; no model call',findings:[]};writeJson(params.output,report);return {key,ok:true,agent:params.agent,output:'fixture review',structuredOutput:report,artifactPaths:[]};
+   assert(['badwater-senior-swarm.qa','badwater-senior-swarm.security','badwater-senior-swarm.librarian'].includes(params.agent));const current=controller.checkpoint(input);const report={status:'complete',verdict:'ok',head:current.build.head,summary:'Fixture inspected actual source/check receipts; no model call',findings:[]};writeJson(params.output,report);return {key,ok:true,agent:params.agent,output:'fixture review',structuredOutput:report,artifactPaths:[]};
   },
  });
- assert.equal(integrated.value.phase,'complete');assert.equal(board.get('board').taskStatus.syntax.status,'completed');assert.deepEqual(snapshot(repo),before);
+ assert.equal(integrated.value.phase,'complete');assert.equal(board.get('board').taskStatus.syntax.status,'completed');assert.equal(board.get('board').taskStatus.docs.status,'completed');assert.equal(controller.checkpoint(input).admissions,11);assert.deepEqual(snapshot(repo),before);
  assert.equal(loaded.extensions.filter(x=>x.commands.has('mcp')).length,1);assert.equal(loaded.extensions.find(x=>x.commands.has('mcp')).path,'builtin:mcp');
- console.log('PASS: installed native SDK/8 package roles/skill/zero warnings, both workflow validators, headless and declined approval, exact host peers, one builtin MCP; no model calls');
+ console.log('PASS: installed native SDK/9 roles/10 profiles/skill/zero warnings, both workflow validators, headless and declined approval, exact host peers, one builtin MCP; no model calls');
 }finally{const id=session.sessionId;const {emitSessionShutdownEvent}=await import(pathToFileURL(path.join(paths.pi,'dist/core/extensions/runner.js')));await emitSessionShutdownEvent(session.extensionRunner,{type:'session_shutdown',reason:'quit'});session.dispose();assert.equal(resolveWorkflowResource('badwater-senior-swarm.build',{id:'native'},id).ok,false,'resource survived session shutdown');}

@@ -129,6 +129,9 @@ private filesystem/network namespaces, with explicit origin authorization and
 no host CDP/cookies. Home Manager opt-in and MCP/Context7 policy belong to
 `badwater-ai`; package presence alone does not authorize a swarm or browser run.
 Start with [workflow, approval, recovery and verified delivery](docs/badwater-senior-swarm.md).
+The [Librarian](docs/librarian.md) reviews documentation freshness and readability,
+writes only approved scoped docs tasks after relevant code, and independently
+checks the final integrated documentation.
 See [packaging, settings precedence, licenses, browser interface and bounded
 validation](docs/badwater-senior-swarm-packaging.md) for the producer contract.
 

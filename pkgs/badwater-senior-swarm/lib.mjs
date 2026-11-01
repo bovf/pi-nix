@@ -6,7 +6,8 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
-export const ROLES = ['po', 'tech-lead', 'ux', 'ui', 'qa', 'security', 'devops'];
+export const ROLES = ['po', 'tech-lead', 'ux', 'ui', 'qa', 'security', 'devops', 'librarian'];
+export const documentationPath = file => /\.(md|mdx|rst|adoc)$/i.test(file);
 export const READ_TOOLS = ['read', 'grep', 'find', 'ls', 'contact_supervisor'];
 export const hash = value => crypto.createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');
 export function ensure(condition, message) { if (!condition) throw new Error(message); }
@@ -105,7 +106,8 @@ export function locked(directory, fn) {
 export function validateCheck(check) {
   ensure(check && Array.isArray(check.argv) && check.argv.length > 1 && check.argv.length <= 32 && check.argv.every(x => typeof x === 'string' && x.length > 0 && x.length <= 1024 && !/[\x00-\x1f]/.test(x)), 'Verification needs an argv array, not a shell string');
   const [exe, ...args] = check.argv;
-  ensure(!exe.includes('/') && ['node', 'python3', 'pytest', 'npm', 'pnpm', 'yarn', 'cargo', 'go', 'nix', 'ruff', 'ty', 'statix', 'deadnix', 'shellcheck', 'bash'].includes(exe), 'Unsupported verification executable; choose a documented check');
+  ensure(!exe.includes('/') && ['node', 'python3', 'pytest', 'npm', 'pnpm', 'yarn', 'cargo', 'go', 'nix', 'ruff', 'ty', 'statix', 'deadnix', 'shellcheck', 'bash', 'git'].includes(exe), 'Unsupported verification executable; choose a documented check');
+  if (exe === 'git') ensure(args.length === 2 && args[0] === 'diff' && args[1] === '--check', 'Only git diff --check is admitted');
   if (exe === 'bash') ensure(args[0] === '-n', 'Only Bash syntax checks are admitted');
   if (exe === 'node') ensure(args[0] === '--test' || args[0] === '--check', 'Only Node test/syntax checks are admitted');
   if (exe === 'python3') ensure((args[0] === '-m' && ['pytest', 'unittest', 'compileall'].includes(args[1])) || /^([^/]+\/)*test[-_][^/]+\.py$/.test(args[0]), 'Only Python test/syntax checks are admitted');
@@ -130,7 +132,9 @@ export function validatePlan(plan) {
     ensure(Array.isArray(task.dependencies) && task.dependencies.every(x => typeof x === 'string'), 'Task dependencies must be an array');
     ensure(Array.isArray(task.criteria) && task.criteria.length > 0 && task.criteria.every(x => typeof x === 'string' && x.length > 0), 'Task needs acceptance criteria');
     ensure(Array.isArray(task.verify) && task.verify.length > 0 && task.verify.length <= 8, 'Task needs executable verification');
-    return {id, title: task.title, paths: task.paths.map(relative), dependencies: task.dependencies, criteria: task.criteria, verify: task.verify.map(validateCheck)};
+    const role = task.role ?? 'developer';
+    ensure(['developer', 'librarian'].includes(role), 'Task role must be developer or librarian');
+    return {id, role, title: task.title, paths: task.paths.map(relative), dependencies: task.dependencies, criteria: task.criteria, verify: task.verify.map(validateCheck)};
   });
   for (const task of tasks) ensure(task.dependencies.every(x => ids.has(x) && x !== task.id), 'Unknown/self task dependency');
   const done = new Set();
@@ -162,6 +166,6 @@ export function validateReview(report, expectedHead) {
 export function quoted(value) { return "'" + value.replaceAll("'", "'\\''") + "'"; }
 export const stringArray = {type: 'array', items: {type: 'string'}, maxItems: 20};
 const finding = {type: 'object', properties: {severity: {enum: ['P0', 'P1', 'P2']}, confidence: {enum: ['confirmed', 'supported', 'unverified']}, path: {type: 'string'}, evidence: {type: 'string'}, impact: {type: 'string'}, trigger: {type: 'string'}, remediation: {type: 'string'}, verification: {type: 'string'}, taskId: {type: 'string', pattern: '^[a-z][a-z0-9-]{0,47}$'}}, required: ['severity', 'confidence', 'path', 'evidence', 'impact', 'trigger', 'remediation', 'verification'], additionalProperties: false};
-export const ASSESSMENT_SCHEMA = {type: 'object', properties: {status: {enum: ['complete', 'blocked']}, summary: {type: 'string'}, assumptions: stringArray, coverage: stringArray, applicableRoles: {type: 'array', items: {enum: ROLES}, maxItems: 7}, findings: {type: 'array', items: finding, maxItems: 20}}, required: ['status', 'summary', 'coverage', 'applicableRoles', 'findings'], additionalProperties: false};
-export const PLAN_SCHEMA = {type: 'object', properties: {summary: {type: 'string'}, acceptance: stringArray, assumptions: stringArray, rollout: {type: 'string'}, tasks: {type: 'array', minItems: 0, maxItems: 12, items: {type: 'object', properties: {id: {type: 'string', pattern: '^[a-z][a-z0-9-]{0,47}$'}, title: {type: 'string'}, paths: stringArray, dependencies: stringArray, criteria: stringArray, verify: {type: 'array', minItems: 1, maxItems: 8, items: {type: 'object', properties: {argv: {type: 'array', items: {type: 'string'}, minItems: 2, maxItems: 32}, timeoutSeconds: {type: 'integer', minimum: 1, maximum: 1800}}, required: ['argv', 'timeoutSeconds'], additionalProperties: false}}}, required: ['id', 'title', 'paths', 'dependencies', 'criteria', 'verify'], additionalProperties: false}}}, required: ['summary', 'acceptance', 'tasks', 'assumptions', 'rollout'], additionalProperties: false};
+export const ASSESSMENT_SCHEMA = {type: 'object', properties: {status: {enum: ['complete', 'blocked']}, summary: {type: 'string'}, assumptions: stringArray, coverage: stringArray, applicableRoles: {type: 'array', items: {enum: ROLES}, maxItems: 8}, findings: {type: 'array', items: finding, maxItems: 20}}, required: ['status', 'summary', 'coverage', 'applicableRoles', 'findings'], additionalProperties: false};
+export const PLAN_SCHEMA = {type: 'object', properties: {summary: {type: 'string'}, acceptance: stringArray, assumptions: stringArray, rollout: {type: 'string'}, tasks: {type: 'array', minItems: 0, maxItems: 12, items: {type: 'object', properties: {id: {type: 'string', pattern: '^[a-z][a-z0-9-]{0,47}$'}, title: {type: 'string'}, role: {enum: ['developer', 'librarian']}, paths: stringArray, dependencies: stringArray, criteria: stringArray, verify: {type: 'array', minItems: 1, maxItems: 8, items: {type: 'object', properties: {argv: {type: 'array', items: {type: 'string'}, minItems: 2, maxItems: 32}, timeoutSeconds: {type: 'integer', minimum: 1, maximum: 1800}}, required: ['argv', 'timeoutSeconds'], additionalProperties: false}}}, required: ['id', 'title', 'paths', 'dependencies', 'criteria', 'verify'], additionalProperties: false}}}, required: ['summary', 'acceptance', 'tasks', 'assumptions', 'rollout'], additionalProperties: false};
 export const FINAL_REVIEW_SCHEMA = {type: 'object', properties: {status: {enum: ['complete', 'blocked']}, verdict: {enum: ['ok', 'blocked']}, head: {type: 'string'}, summary: {type: 'string'}, findings: {type: 'array', items: finding, maxItems: 20}}, required: ['status', 'verdict', 'head', 'summary', 'findings'], additionalProperties: false};

@@ -6,6 +6,8 @@ to execute commands. Only the parent may delegate, approve commands, admit agent
 and persist mission artifacts. Children return findings through their assigned
 channel. No reference grants shell/write/browser/network/model access.
 
+- [Documentation / Librarian](documentation.md): locally authored source-first
+  freshness checks, short READMEs, focused linked docs/ pages and verified changes.
 - [Engineering / Superpowers](superpowers/engineering.md): small plans, red/green,
   root-cause debugging, fresh verification.
 - [UI/UX / Impeccable](impeccable/ui-ux.md): independent design judgment, responsive

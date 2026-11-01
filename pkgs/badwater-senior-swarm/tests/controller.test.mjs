@@ -17,12 +17,13 @@ function fixture(t, overrides = {}) {
   git(repo, ['init', '-b', 'main']); git(repo, ['config', 'user.name', 'Fixture']); git(repo, ['config', 'user.email', 'fixture@localhost']);
   fs.writeFileSync(path.join(repo, 'sum.mjs'), 'export const sum = (a,b) => a-b;\n');
   fs.writeFileSync(path.join(repo, 'sum.test.mjs'), "import {test} from 'node:test'; import assert from 'node:assert/strict'; import {sum} from './sum.mjs'; test('adds',()=>assert.equal(sum(2,3),5));\n");
+  fs.writeFileSync(path.join(repo, 'README.md'), '# Fixture\n');
   git(repo, ['add', '.']); git(repo, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'test: fixture']);
   const input = {repo, id: 'synthetic', goal: 'Fix addition', stateRoot: path.join(base, 'state'), config: {maxAgents: 20, ...overrides}};
   const initial = prepare(input), directory = initial.runDirectory;
   const plan = {summary: 'Fix addition, preserve interface.', acceptance: ['2+3 is5'], assumptions: [], rollout: 'Local fixture only', tasks: [{id: 'addition', title: 'Correct addition', paths: ['sum.mjs'], dependencies: [], criteria: ['sum adds operands'], verify: [{argv: ['node', '--test', 'sum.test.mjs'], timeoutSeconds: 30}]}]};
   admit({...input, stage:'discovery'});
-  for (const role of ['po', 'tech-lead', 'qa', 'security']) writeJson(path.join(directory, 'reports', role + '.json'), {status: 'complete', summary: 'fixture', coverage: ['synthetic source'], applicableRoles: [], findings: []});
+  for (const role of ['po', 'tech-lead', 'qa', 'security', 'librarian']) writeJson(path.join(directory, 'reports', role + '.json'), {status: 'complete', summary: 'fixture', coverage: ['synthetic source'], applicableRoles: [], findings: []});
   admit({...input,stage:'specialists'});admit({...input,stage:'plan'});
   writeJson(path.join(directory, 'reports/plan.json'), plan); collect(input);
   return {base, repo, input, directory, plan};
@@ -125,7 +126,7 @@ test('stale or contradictory independent findings cannot complete a build',()=>{
   assert.throws(()=>validateReview({status:'complete',head:'new',verdict:'ok',findings:[{severity:'P0',confidence:'confirmed',path:'a',evidence:'x',impact:'x',trigger:'x',remediation:'x',verification:'x'}]},'new'),/contradicts/);
 });
 test('budget stops before dispatch without falsely completing',t=>{
-  const f=fixture(t,{maxAgents:5});approve(f.directory,{confirmed:true,sessionId:'human'});
+  const f=fixture(t,{maxAgents:6});approve(f.directory,{confirmed:true,sessionId:'human'});
   assert.throws(()=>advance(f.input),/budget/);
   assert.notEqual(checkpoint(f.input).phase,'complete');
 });
@@ -188,9 +189,43 @@ test('repair cycles are bounded and every pass is gated and head-qualified',t=>{
 test('review admissions are durable before dispatch and completed reports are reused',t=>{
   const f=fixture(t),run=readJson(path.join(f.directory,'run.json'));
   run.phase='reviewing';writeJson(path.join(f.directory,'run.json'),run);
-  const claimed=admit({...f.input,stage:'discovery'});assert.equal(claimed.admissions,5);assert(claimed.slots.every(slot=>slot.cached.status==='complete'));
-  assert.equal(admit({...f.input,stage:'specialists'}).admissions,5);assert.equal(admit({...f.input,stage:'plan'}).admissions,5);
+  const claimed=admit({...f.input,stage:'discovery'});assert.equal(claimed.admissions,6);assert(claimed.slots.every(slot=>slot.cached.status==='complete'));
+  assert.equal(admit({...f.input,stage:'specialists'}).admissions,6);assert.equal(admit({...f.input,stage:'plan'}).admissions,6);
 });
+test('Librarian review is mandatory and task ownership is part of exact approval',t=>{
+  const f=fixture(t);fs.unlinkSync(path.join(f.directory,'reports/librarian.json'));assert.throws(()=>collect(f.input),/mandatory/);
+  assert.deepEqual(settings({roleModels:{'badwater-senior-swarm.librarian':'provider/model'}}).roleModels,{'badwater-senior-swarm.librarian':'provider/model'});
+  assert.throws(()=>validatePlan({...f.plan,tasks:[{...f.plan.tasks[0],role:'security'}]}),/Task role/);
+  const before=validatePlan(f.plan),after=validatePlan({...f.plan,tasks:[{...f.plan.tasks[0],role:'librarian'}]});assert.notEqual(hash(before),hash(after));
+  assert.deepEqual(validateCheck({argv:['git','diff','--check']}).argv,['git','diff','--check']);
+  for(const argv of [['git','push','origin'],['git','diff','--check','--output=README.md'],['git','checkout','main']])assert.throws(()=>validateCheck({argv}),/Only git diff/);
+});
+
+test('approved Librarian patches are documentation-only and actual whitespace failures block capture',t=>{
+  for(const kind of ['valid','code','whitespace']){
+    const f=fixture(t),task={id:'docs',role:'librarian',title:'Document source',paths:['README.md','sum.mjs'],dependencies:[],criteria:['Source-grounded concise docs'],verify:[{argv:['git','diff','--check'],timeoutSeconds:30}]};
+    writeJson(path.join(f.directory,'reports/plan.json'),{...f.plan,tasks:[task]});collect(f.input);approve(f.directory,{confirmed:true,sessionId:'human'});
+    const step=advance(f.input),cwd=worker(f,step);assert.equal(wireResult('advance',step).pending[0].role,'librarian');
+    fs.writeFileSync(path.join(cwd,'README.md'),kind==='whitespace'?'# Example  \n':'# Example\n\nSee [sum.mjs](sum.mjs).\n');
+    if(kind==='code')fs.appendFileSync(path.join(cwd,'sum.mjs'),'// not documentation\n');
+    if(kind==='valid'){const receipt=taskCheck({...f.input,key:step.pending[0].key},cwd);assert.deepEqual(receipt.patch.paths,['README.md']);assert.equal(receipt.checks[0].status,0);const final=advance(f.input);assert(final.reviewRoles.includes('librarian'));}
+    else assert.throws(()=>taskCheck({...f.input,key:step.pending[0].key},cwd),kind==='code'?/documentation files only/:/Verification failed/);
+  }
+});
+
+test('upstream repairs invalidate dependent documentation and rerun its isolated writer',t=>{
+  const f=fixture(t,{maxAgents:32}),docs={id:'docs',role:'librarian',title:'Document verified addition',paths:['README.md'],dependencies:['addition'],criteria:['Matches final source'],verify:[{argv:['git','diff','--check'],timeoutSeconds:30}]};
+  writeJson(path.join(f.directory,'reports/plan.json'),{...f.plan,tasks:[...f.plan.tasks,docs]});collect(f.input);approve(f.directory,{confirmed:true,sessionId:'human'});
+  let step=advance(f.input);
+  for(let cycle=0;cycle<2;cycle++){
+    assert.equal(step.pending[0].taskId,'addition');const code=worker(f,step,'code-'+cycle);fs.writeFileSync(path.join(code,'sum.mjs'),'export const sum = (a,b) => a+b; // pass '+cycle+'\n');taskCheck({...f.input,key:step.pending[0].key},code);
+    step=advance(f.input);assert.equal(step.pending[0].taskId,'docs');const written=worker(f,step,'docs-'+cycle);assert(fs.readFileSync(path.join(written,'sum.mjs'),'utf8').includes('pass '+cycle));fs.writeFileSync(path.join(written,'README.md'),'# Addition\n\nSource verified after code pass '+cycle+'.\n');taskCheck({...f.input,key:step.pending[0].key},written);
+    const review=advance(f.input);finalReports(f,review,cycle===0?{qa:{verdict:'blocked',findings:[{severity:'P1',confidence:'confirmed',path:'sum.mjs',evidence:'Synthetic scoped repair',impact:'Fixture impact',trigger:'Fixture trigger',remediation:'One approved correction',verification:'Repeat approved test',taskId:'addition'}]}}:{});
+    step=advance(f.input);if(cycle===0)assert(!checkpoint(f.input).build.completed.includes('docs'));
+  }
+  assert.equal(step.phase,'complete');assert.equal(fs.readFileSync(path.join(step.build.integration,'README.md'),'utf8'),'# Addition\n\nSource verified after code pass 1.\n');assert.equal(snapshot(f.repo).head,step.source.head);
+});
+
 test('large plans and cached reports stay outside native 4-KiB stdout previews',t=>{
   const f=fixture(t);const plan={...f.plan,summary:'Detailed source evidence. '.repeat(500)};
   writeJson(path.join(f.directory,'reports/plan.json'),plan);const collected=collect(f.input),wire=wireResult('collect',collected);

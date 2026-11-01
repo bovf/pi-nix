@@ -28,6 +28,7 @@ const startLine = lines => Number(lines.find(line => line.startsWith('Lines ')).
 test('review contains every effective plan field and exact check, with a bounded confirmation', () => {
   const run = fixture(), text = reviewDocument(run, '/fixture/review.json');
   for (const sentinel of ['Overall-acceptance-sentinel', 'Assumption-sentinel', 'Rollout-sentinel', 'Task-acceptance-sentinel', 'dependency-sentinel', 'src/example.mjs', '["node","--test","example.test.mjs"]', '37s', run.snapshot.digest, run.planHash, 'No push']) assert(text.includes(sentinel), sentinel);
+  assert(text.includes('Role: developer')); run.plan.tasks[0].role = 'librarian'; assert(reviewDocument(run, '/fixture/review.json').includes('Role: librarian'));
   assert(text.includes(run.plan.summary)); assert(confirmationText(run).length < 700); assert(!confirmationText(run).includes(run.plan.summary));
 });
 
