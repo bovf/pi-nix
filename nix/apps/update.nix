@@ -3,7 +3,7 @@
     pkgs = nixpkgs.legacyPackages.${system};
     update = pkgs.writeShellApplication {
       name = "update";
-      runtimeInputs = with pkgs; [curl jq nix nodejs python3 git];
+      runtimeInputs = with pkgs; [curl jq nix nodejs_22 python3 git];
       text = ''
         # REA's approved complete native bundle cannot be realized on other hosts.
         # Refuse before mutating any pins rather than silently freezing REA.
@@ -239,6 +239,7 @@
         nix flake update hunk/bun2nix hunk/systems hunk/bun2nix/flake-parts hunk/bun2nix/treefmt-nix
 
         update_simple_npm "pi-vim" "pi-vim" "overlays/pi-vim/default.nix"
+        update_simple_npm "axe" "axe-core" "overlays/badwater-senior-swarm/default.nix"
         update_pi_package "rpiv-todo" "@juicesharp/rpiv-todo" "pkgs/rpiv-todo"
         update_pi_package "pi-archimedes" "pi-archimedes" "pkgs/pi-archimedes"
         update_pi_package "pi-subagents" "pi-subagents" "pkgs/pi-subagents"
@@ -250,9 +251,10 @@
         update_pi_package "pi-btw" "@narumitw/pi-btw" "pkgs/pi-btw" "del(.devDependencies, .peerDependencies)"
         update_pi_package "pi-goal" "@narumitw/pi-goal" "pkgs/pi-goal" "del(.devDependencies, .peerDependencies)"
         update_ponytail
+        python3 ${./audit-rea-ghidra.py}
         update_pi_package "rea" "rea-agents" "pkgs/rea" "$(cat pkgs/rea/package-filter.jq)" "overlays/rea/default.nix"
 
-        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#hunk-review .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal .#rea --out-link "$build_roots/packages"
+        nix build .#pi-coding-agent .#pi-vim .#pi-search .#pi-search-mcp .#hunk-review .#rpiv-todo .#pi-archimedes .#pi-subagents .#remote-pi .#plannotator-pi-extension .#ponytail .#pi-wait-what .#pi-lsp .#pi-chrome-devtools .#pi-btw .#pi-goal .#rea .#badwater-video .#badwater-craft-mcp .#badwater-senior-swarm .#badwater-senior-swarm-browser .#badwater-gitlab .#badwater-screenshot --out-link "$build_roots/packages"
         nix run .#fmt
       '';
     };

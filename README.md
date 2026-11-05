@@ -21,6 +21,8 @@ overlays.pi-vim
 overlays.pi-search
 overlays.pi-packages
 overlays.badwater-senior-swarm
+overlays.badwater-gitlab
+overlays.badwater-screenshot
 
 packages.${system}.pi-coding-agent
 packages.${system}.pi-vim
@@ -39,8 +41,10 @@ packages.${system}.pi-chrome-devtools
 packages.${system}.pi-btw
 packages.${system}.pi-goal
 packages.${system}.badwater-senior-swarm
+packages.${system}.badwater-gitlab
 # Linux-only local runtimes:
 packages.${system}.badwater-senior-swarm-browser
+packages.${system}.badwater-screenshot
 packages.${system}.badwater-video
 packages.${system}.badwater-craft-mcp
 # x86_64-linux-only complete native/static bundle:
@@ -48,7 +52,7 @@ packages.x86_64-linux.rea
 ```
 
 `pi-coding-agent` uses the official `earendil-works/pi` flake's Nix recipe,
-locked to Pi **1.4.0** (`4a080252f06caf63a525d7873c5d94d3c23887e0`). The
+locked to Pi **1.5.0** (`f9a26365568127461c47a07a37dcb42c140a3ac5`). The
 `pi-upstream` input selects stable release tags and follows this flake's nixpkgs.
 The operator approved leaving the lagging `stable` branch. The updater now resolves
 Pi/Hunk stable tags before locking, rather than selecting Hunk's beta main.
@@ -56,16 +60,18 @@ Upstream owns Node 22, source/install locks, catalog hydration and install check
 there is no second local core recipe or independently updated core hash.
 
 A uniquely matched workspace-install hook packs the upstream build's compiled
-Durable helper and installs it with its compiled Chord dependency in the same
-host output. Locked metadata identifies those artifacts; Nix string context is
-preserved, without a second core recipe or mismatched registry helpers.
+schema/Durable/Chord artifacts in the same host output. Pi 1.5's recipe omits
+schema from its install source mapping; the thin bridge supplies that compiled
+archive through the existing importNpmLock interface, with obsolescence guards
+and an installed validation probe. Locked metadata/Nix context bind every artifact
+to that compilation, without a second core recipe or registry substitute.
 Pi 1.2 removed experimental server/client/protocol workspaces. With approval,
 their packing and Unix-handshake contract are retired; supported native SDK,
 child/preload/host-peer controls and actual bundled CLI RPC remain required.
 Subagents 0.84.0 uses native SDK sessions, not the retired Unix transport.
 Pi1.3 fixed the stale install probe upstream, so its local substitution stays retired.
 The bridge packs both compiled Durable/Chord artifacts; native install, SDK and
-actual footer gates remain. [Current update and limits](docs/update-2026-10-29.md).
+actual footer gates remain. [Current update and limits](docs/update-2026-11-05.md).
 
 The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
 its shared peers are hoisted in `lib/pi/node_modules`. Native `remote-pi` links
@@ -100,6 +106,10 @@ pkgs.piPackages.pi-chrome-devtools
 pkgs.piPackages.pi-btw
 pkgs.piPackages.pi-goal
 pkgs.piPackages.badwater-senior-swarm
+pkgs.piPackages.badwater-gitlab
+# Linux only:
+pkgs.piPackages.badwater-screenshot
+pkgs.piPackages.badwater-video
 ```
 
 `hunk-review` reuses the skill shipped in Hunk's own flake package; it does not copy or fork the upstream skill. The packaged `pi-archimedes` leaves clipboard images to Pi core and delegation to `pi-subagents`, avoiding duplicate shortcuts and tools.
@@ -185,7 +195,7 @@ badwater.ai.pi.packages = with pkgs.piPackages; [
 nix run .#fmt           # auto-format Nix files with Alejandra
 nix run .#fmt -- --check
 # Preserve existing Nix configuration while limiting this update's builds:
-export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 1\ncores = 3'
+export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 2\ncores = 4'
 nix run .#update        # update all pins/managed locks, then build
 nix develop             # installs staged-file Alejandra pre-commit hook
 ```
@@ -213,7 +223,13 @@ pi-lsp
 pi-chrome-devtools
 pi-btw
 pi-goal
+badwater-senior-swarm / badwater-senior-swarm-browser (including axe-core)
+badwater-gitlab / badwater-screenshot
+badwater-video / badwater-craft-mcp
 ```
+
+Use this Nix workflow, not a global npm install or imperative `pi update`.
+Local package version labels need not change for their dependency builds to move.
 
 REA is also refreshed through this same full updater (standalone CLI/MCP,
 not a Pi extension). Full update now requires x86_64-linux to realize its
@@ -231,24 +247,25 @@ is resolved through the public latest-release redirect instead.
 All ten extension npm locks and REA's separate lock are regenerated from package manifests, discarding
 published lockfiles/shrinkwraps even when the top-level version is unchanged.
 Upstream dependency constraints and existing dev/peer filtering are preserved:
-`pi-chrome-devtools` and `pi-goal` retain `@narumitw/pi-tui-kit` `0.59.0` under
-`^0.59.0`; `pi-btw` now declares `^0.68.0` and resolves `0.68.0`, not an
-incompatible newer dist-tag. Pi core and Hunk retain their matching upstream build locks.
+Chrome retains tui-kit `^0.59.0` → `0.59.0`; btw/goal now declare `^0.69.0`
+and resolve `0.69.0`, not an incompatible newer dist-tag. Pi core and Hunk retain their matching upstream build locks.
 Update builds retain GC roots in a printed temporary directory outside the repo;
 remove that directory when the outputs are no longer needed.
 
 `pi-search` and `pi-search-mcp` remain local code and are build-validated against
 the refreshed nixpkgs dependencies without an invented upstream version.
 
-### Current update (2026-10-29)
+### Current integration candidate (2026-11-05)
 
-The full updater selects official stable Pi1.4.0 and Hunk0.24.1, plus all
-registered plugin/skill releases and all ten extension dependency locks. The
-subsequent REA addition brings the native exports to19 and managed locks to11;
-its separate current package checks are described [below](#rea-nativestatic-reverse-engineering). See
-[the exact version table, source audit, validation and limits](docs/update-2026-10-29.md).
-The [2026-10-18 acceptance](docs/update-2026-10-18.md) is historical, not a receipt
-for the current candidate or downstream integration.
+The full updater selects official stable Pi **1.5.0**, all registered package
+releases and 11 managed npm locks; all 23 native exports build. The update includes
+axe-core, the newer local MCP packages and a REA-scoped compatible Ghidra pin.
+**461** unique dependency tuples and parent constraints were audited. See
+[versions, schema bridge, native compatibility and bounded checks](docs/update-2026-11-05.md).
+This candidate stays on a private feature branch until operator rebuild/testing
+and separate main/mirror approval. Historical receipts below are not current acceptance.
+
+### Historical update (2026-10-29)
 
 The refreshed nixpkgs supplies Python MCP2.3. Local search uses its supported
 low-level callbacks, retaining schema validation, tool names and error results.
@@ -431,7 +448,7 @@ paths and host Unix sockets. Inspect startup hooks and installed wrappers when
 upgrading; never reuse live settings/auth. For example, on Linux:
 
 ```bash
-export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 1\ncores = 3'
+export NIX_CONFIG="${NIX_CONFIG-}"$'\nmax-jobs = 2\ncores = 4'
 roots=$(mktemp -d)
 nix build .#pi-coding-agent --out-link "$roots/core"
 nix build .#remote-pi --out-link "$roots/remote"
@@ -527,8 +544,8 @@ The matching skill and all references are at
 Policy/opt-ins and additive MCP ownership belong to `badwater-ai`/the consumer,
 not to this flake; package installation does not configure any agent.
 
-The approved free Linux bundle supplies Ghidra 12.1.4/JDK21, Rizin 0.9.1,
-GNU binutils 2.46, procps and util-linux, built-in static JS/Electron/.NET and
+The approved free Linux bundle supplies a REA-only Ghidra 12.1.4/JDK21 pin,
+Rizin 0.9.1, GNU binutils 2.46, procps/util-linux, built-in static JS/Electron/.NET and
 artifact parsers, plus the real integrity-pinned native `@lydell/node-pty` addon.
 Node22.23.4 satisfies REA's engine bound; current nixpkgs Node24.21 does not.
 **Frida, Android, firmware extraction engines, browsers, packet/signal capture

@@ -27,6 +27,7 @@ assert re.search(r'url = "github:earendil-works/pi/v[0-9]+\.[0-9]+\.[0-9]+";', f
 assert 'update_release_input "pi-upstream" "earendil-works/pi"' in updater
 assert 'update_release_input "hunk" "modem-dev/hunk"' in updater
 assert 'inputs.nixpkgs.follows = "nixpkgs";' in flake.split('pi-upstream = {', 1)[1].split('};', 1)[0]
+assert 'runtimeInputs = with pkgs; [curl jq nix nodejs_22 python3 git];' in updater
 assert 'update_pi_core' not in updater
 assert 'nix flake update' in updater
 assert 'prev.callPackage "${pi-upstream}/nix/package.nix"' in core
@@ -34,8 +35,32 @@ assert 'attrs.pname == "pi-workspace-packages"' in core
 assert 'prev.lib.strings.addContextFrom lock' in core
 assert all(field not in core for field in ['npmDepsHash', 'modelData', 'buildNpmPackage'])
 assert 'for workspace in durable chord;' in core
+assert 'pack_package packages/schema schema' in core
+assert '"node_modules/@earendil-works/pi-schema" = "${compiled}/schema.tgz";' in core
+assert 'Upstream now supplies pi-schema; retire its local artifact bridge' in core
+assert 'Upstream now packs pi-schema; retire its local artifact bridge' in core
+assert 'tests/core-schema.mjs' in core
 assert 'pack_package packages/chord chord' in core
 assert all(f'packages/{name}' not in core for name in ['protocol', 'client', 'server'])
+
+# Local packages still carry external dependencies: refresh axe and build every
+# advertised native runtime instead of freezing additions outside the old list.
+assert 'update_simple_npm "axe" "axe-core" "overlays/badwater-senior-swarm/default.nix"' in updater
+for name in ['badwater-video', 'badwater-craft-mcp', 'badwater-senior-swarm', 'badwater-senior-swarm-browser', 'badwater-gitlab', 'badwater-screenshot']:
+    assert f'.#{name} ' in updater
+simple = 'update_simple_npm() {' + shell_section('        update_simple_npm() {', '        update_pi_package() {')
+with tempfile.TemporaryDirectory() as directory:
+    tmp = Path(directory)
+    overlay = tmp / 'overlays/badwater-senior-swarm/default.nix'
+    overlay.parent.mkdir(parents=True)
+    original = (ROOT / 'overlays/badwater-senior-swarm/default.nix').read_text()
+    overlay.write_text(original)
+    subprocess.run(['bash', '-euc', '''
+        npm_meta() { printf '%s' '{"dist-tags":{"latest":"9.9.9"},"versions":{"9.9.9":{"dist":{"integrity":"sha512-fixture","tarball":"https://registry.npmjs.org/axe-core/-/axe-core-9.9.9.tgz"}}}}'; }
+    ''' + simple + '\nupdate_simple_npm axe axe-core overlays/badwater-senior-swarm/default.nix\n'], cwd=tmp, check=True)
+    updated = overlay.read_text()
+    assert 'version = "9.9.9";' in updated and 'axe-core-9.9.9.tgz' in updated and 'hash = "sha512-fixture";' in updated
+    assert updated.count('version = "0.1.0";') == original.count('version = "0.1.0";')
 
 with tempfile.TemporaryDirectory() as directory:
     tmp = Path(directory)
@@ -126,7 +151,9 @@ assert "@earendil-works/pi-agent-core/node" not in packages
 assert 'update_pi_package "rea" "rea-agents" "pkgs/rea" "$(cat pkgs/rea/package-filter.jq)" "overlays/rea/default.nix"' in updater
 assert 'local source_file="\'\'${5:-overlays/pi-packages/default.nix}"' in updater
 assert 'resolve_build_hash "$attr" "$source_file" "npmDepsHash"' in updater
-assert '.#rea --out-link' in updater
+assert '.#rea ' in updater
+assert 'python3 ${./audit-rea-ghidra.py}' in updater
+subprocess.run(['python3', str(ROOT / 'nix/apps/audit-rea-ghidra.py'), '--self-test'], check=True)
 rea_lock = json.loads((ROOT / "pkgs/rea/package-lock.json").read_text())
 rea_root = rea_lock["packages"][""]
 assert rea_root["dependencies"]["@lydell/node-pty"] == "1.1.0"
@@ -170,4 +197,4 @@ with tempfile.TemporaryDirectory() as directory:
     assert 'hash = "sha512-fixture";' in updated
     assert 'npmDepsHash = prev.lib.fakeHash;' in updated
     assert json.loads((tmp / "pkgs/rea/package-lock.json").read_text())["lockfileVersion"] == 3
-print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; retired subagents alias patch; REA updater/filter/native optional lock coverage")
+print("PASS: upstream input-owned core; fresh locks; rooted builds; stable release redirect; shared remote-pi host-peer normalization and copy-free lock; retired subagents alias patch; REA updater/filter/native optional lock coverage; axe/local-runtime updater coverage")

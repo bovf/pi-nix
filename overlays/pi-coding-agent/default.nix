@@ -2,17 +2,38 @@
   # Upstream's offline build already compiles these libraries; only pack its artifacts.
   core = prev.callPackage "${pi-upstream}/nix/package.nix" {
     source = pi-upstream;
+    # Pi 1.5's install lock adds schema but its recipe omits the compiled override.
+    importNpmLock =
+      prev.importNpmLock
+      // {
+        __functor = _: args:
+          prev.importNpmLock (args
+            // prev.lib.optionalAttrs (args ? packageSourceOverrides) (
+              assert prev.lib.assertMsg (!(args.packageSourceOverrides ? "node_modules/@earendil-works/pi-schema")) "Upstream now supplies pi-schema; retire its local artifact bridge"; let
+                codingArchive = args.packageSourceOverrides."node_modules/@earendil-works/pi-coding-agent";
+                compiled = prev.lib.strings.addContextFrom codingArchive (builtins.dirOf codingArchive);
+              in {
+                packageSourceOverrides =
+                  args.packageSourceOverrides
+                  // {
+                    "node_modules/@earendil-works/pi-schema" = "${compiled}/schema.tgz";
+                  };
+              }
+            ));
+      };
     stdenv =
       prev.stdenv
       // {
         mkDerivation = attrs:
           prev.stdenv.mkDerivation (attrs
             // prev.lib.optionalAttrs (attrs.pname == "pi-workspace-packages") (
-              assert builtins.length (prev.lib.splitString "pack_package packages/coding-agent coding-agent" attrs.installPhase) == 2; {
+              assert builtins.length (prev.lib.splitString "pack_package packages/coding-agent coding-agent" attrs.installPhase) == 2;
+              assert prev.lib.assertMsg (builtins.length (prev.lib.splitString "pack_package packages/schema schema" attrs.installPhase) == 1) "Upstream now packs pi-schema; retire its local artifact bridge"; {
                 installPhase =
                   prev.lib.replaceStrings ["pack_package packages/coding-agent coding-agent"] [
                     ''
                       pack_package packages/coding-agent coding-agent
+                      pack_package packages/schema schema
                       pack_package packages/durable durable
                       pack_package packages/chord chord''
                   ]
@@ -34,6 +55,11 @@ in {
         openaiCodexContextWindows = builtins.fromJSON (builtins.readFile ./openai-codex-context.json);
         nodejs = prev.nodejs_22;
       };
+    postInstallCheck =
+      (old.postInstallCheck or "")
+      + ''
+        ${prev.nodejs_22}/bin/node ${../../tests/core-schema.mjs} "$out" ${prev.lib.escapeShellArg core.version}
+      '';
     postInstall =
       (old.postInstall or "")
       + ''

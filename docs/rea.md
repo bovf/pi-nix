@@ -11,7 +11,7 @@ unverified similarly named project:
 
 - URL: `https://registry.npmjs.org/rea-agents/-/rea-agents-6.8.0.tgz`
 - SHA512: `9QDeRnGqEDzABZyr04eLnBXBv/c6I9/TWu/6M0MD4pEfkySI/BIgwTODIbAReX3C1x6hjw9+Jlx4A2yUSPZ9ww==`
-- Nix dependency cache: `sha256-I77F7iVdOfJabNXtQQLLOerp1jw5Qag6922AKD/CoSo=`
+- Refreshed Nix dependency cache: `sha256-aFeNvUbrV8GAAZdOmvZco29MIUm6OFkX+/eeYlvkRI0=`
 - Managed lock: `pkgs/rea/package-lock.json`; normalization shared with updater:
   `pkgs/rea/package-filter.jq`.
 
@@ -39,9 +39,9 @@ server is selected. Skill plus references:
 `share/rea/skills/reverse-engineer-anything`; passthru exposes
 `skillRelativePath`, `mcpArgs`, `runtimeBackends`, and `nodejs`.
 
-| Bundled/discovered backend | Locked nixpkgs version | Purpose |
+| Bundled/discovered backend | Selected version | Purpose |
 | --- | --- | --- |
-| Ghidra | 12.1.4 | Deep native static analysis, matches REA's verified12.1.4 bridge |
+| Ghidra (REA-only pin) | 12.1.4 | Deep native static analysis, matches REA's verified12.1.4 bridge |
 | OpenJDK | 21.0.12.1+1 | Full JDK for Ghidra bridge/Java probes |
 | Rizin | 0.9.1 | Explicit one-shot native static commands |
 | GNU binutils | 2.46 | objdump static inspection |
@@ -51,11 +51,22 @@ server is selected. Skill plus references:
 The wrapper prefixes these tool paths (plus Bash), and sets defaults for
 `GHIDRA_INSTALL_DIR`, `JAVA_HOME`, and `REA_ANALYSIS_PROVIDER=ghidra`. Explicit
 caller environment selections remain possible; unapproved overrides are not a
-validated backend configuration. Ghidra's source and all other backend hashes
-belong to the already locked nixpkgs input, not independently floating fetches.
-The selected Ghidra package has only `os/linux_x86_64` native decompiler files;
-ARM Linux and Darwin support for a CLI subset does not establish support for
-this complete bundle. No emulation or alternate binary substitution is added.
+validated backend configuration. New nixpkgs supplies Ghidra12.2/JDK25, outside
+REA6.8's accepted12.1.x line. The operator approved a REA-only12.1.4/JDK21 pin;
+other consumers retain new nixpkgs Ghidra. The exact stable tag/archive/digest is
+recorded in [`ghidra.json`](../overlays/rea/ghidra.json). Its raw SHA256 matches
+the official GitHub asset metadata and the archive is hash-checked by Nix.
+Other backend hashes remain owned by locked nixpkgs.
+
+The old prebuilt decompiler crashed after Nix patching. This scoped recipe rebuilds
+the supplied native decompiler and Sleigh C++ sources from that same archive,
+with declared Nix compiler/parser/zlib dependencies, without changing Java/archive
+content, backend version checks or supported host selection. Synthetic static
+Ghidra acceptance must pass, not just doctor/discovery. Review/retire this pin when
+stable REA supports the nixpkgs line; do not silently advance or weaken its guard.
+This Nix native rebuild/REA provider is advertised only for x86_64 Linux.
+Other archive platform files and upstream CLI-only support do not establish
+ARM Linux or Darwin acceptance for this complete bundle. No emulation or alternate binary substitution is added.
 
 Built-in static JavaScript/Electron, .NET and artifact-format parsers need no
 proprietary engine. Optional Frida, Android engines/devices/resources, firmware
@@ -108,7 +119,10 @@ namespace with fixture HOME; never live settings/auth or host sockets/devices.
 
 `nix run .#update` refreshes REA's stable npm parent, fresh dependency lock,
 source integrity and Nix dependency hash through the existing shared updater,
-and realizes the package along with existing exports. Full update requires
+and realizes the package along with existing exports. It also calls
+`nix/apps/audit-rea-ghidra.py` to verify the intentional compatible pin's exact
+stable release asset/official digest and archive hash; `--self-test` covers mismatched
+release/prerelease/asset/digest negatives offline. Full update requires
 x86_64-linux and refuses other hosts before pin mutation rather than silently
 freezing the unsupported bundle. Existing Pi platform exports are unchanged.
 `python3 tests/update.py` covers the shared normalization and updater wiring;

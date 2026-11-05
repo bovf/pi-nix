@@ -15,10 +15,10 @@
   };
   axe = prev.stdenvNoCC.mkDerivation {
     pname = "badwater-senior-swarm-axe-core";
-    version = "4.10.3";
+    version = "4.14.0";
     src = prev.fetchurl {
-      url = "https://registry.npmjs.org/axe-core/-/axe-core-4.10.3.tgz";
-      hash = "sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==";
+      url = "https://registry.npmjs.org/axe-core/-/axe-core-4.14.0.tgz";
+      hash = "sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==";
     };
     sourceRoot = "package";
     installPhase = ''

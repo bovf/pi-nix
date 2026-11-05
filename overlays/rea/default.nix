@@ -1,4 +1,31 @@
-{}: final: prev: {
+{}: final: prev: let
+  # REA 6.8 accepts only 12.1.x; keep this backend scoped, not a global rollback.
+  pin = builtins.fromJSON (builtins.readFile ./ghidra.json);
+  ghidra = (prev.ghidra-bin.override {openjdk25 = prev.openjdk21;}).overrideAttrs (old: {
+    version = pin.version;
+    versiondate = pin.versionDate;
+    src = prev.fetchurl {inherit (pin) url hash;};
+    nativeBuildInputs = old.nativeBuildInputs ++ [prev.unzip prev.bison prev.flex];
+    buildInputs = old.buildInputs ++ [prev.zlib];
+    meta =
+      old.meta
+      // {
+        platforms = ["x86_64-linux"];
+        sourceProvenance = with prev.lib.sourceTypes; [fromSource binaryBytecode];
+      };
+    # Rebuild the supplied native sources: patching the old ELF crashes at startup.
+    buildPhase = ''
+      runHook preBuild
+      cp -r Ghidra/Features/Decompiler/src/decompile "$TMPDIR/rea-decompiler"
+      chmod -R u+w "$TMPDIR/rea-decompiler"
+      make -C "$TMPDIR/rea-decompiler/cpp" -j"$NIX_BUILD_CORES" ghidra_opt
+      make -C "$TMPDIR/rea-decompiler/cpp" -j"$NIX_BUILD_CORES" sleigh_opt
+      cp "$TMPDIR/rea-decompiler/cpp/ghidra_opt" Ghidra/Features/Decompiler/os/linux_x86_64/decompile
+      cp "$TMPDIR/rea-decompiler/cpp/sleigh_opt" Ghidra/Features/Decompiler/os/linux_x86_64/sleigh
+      runHook postBuild
+    '';
+  });
+in {
   rea = prev.buildNpmPackage rec {
     pname = "rea";
     version = "6.8.0";
@@ -8,7 +35,7 @@
     };
     nodejs = prev.nodejs_22;
     sourceRoot = "package";
-    npmDepsHash = "sha256-I77F7iVdOfJabNXtQQLLOerp1jw5Qag6922AKD/CoSo=";
+    npmDepsHash = "sha256-aFeNvUbrV8GAAZdOmvZco29MIUm6OFkX+/eeYlvkRI0=";
     dontNpmBuild = true;
     npmFlags = ["--ignore-scripts" "--omit=dev" "--legacy-peer-deps"];
     nativeBuildInputs = [prev.makeWrapper prev.jq prev.autoPatchelfHook];
@@ -41,7 +68,7 @@
       makeWrapper ${nodejs}/bin/node "$out/bin/rea" \
         --add-flags "$out/lib/rea/scripts/rea.mjs" \
         --prefix PATH : ${prev.lib.makeBinPath [prev.procps prev.util-linux prev.binutils prev.rizin prev.openjdk21 prev.bash]} \
-        --set-default GHIDRA_INSTALL_DIR ${prev.ghidra}/lib/ghidra \
+        --set-default GHIDRA_INSTALL_DIR ${ghidra}/lib/ghidra \
         --set-default JAVA_HOME ${prev.openjdk21} \
         --set-default REA_ANALYSIS_PROVIDER ghidra \
         --set PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD 1
@@ -73,7 +100,7 @@
     '';
     passthru = {
       inherit nodejs;
-      runtimeBackends = [prev.ghidra prev.openjdk21 prev.rizin prev.binutils prev.procps prev.util-linux];
+      runtimeBackends = [ghidra prev.openjdk21 prev.rizin prev.binutils prev.procps prev.util-linux];
       skillRelativePath = "share/rea/skills/reverse-engineer-anything";
       mcpArgs = ["mcp"];
     };

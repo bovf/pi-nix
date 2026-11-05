@@ -16,22 +16,26 @@ const providers = ["openai", "openai-codex"];
 // Pi1.4's pinned catalog removed these retired IDs only from the subscription route.
 // Keep their reviewed limits for the API route; overrides must not resurrect them.
 const retiredSubscriptionIds = ["gpt-5.3-codex-spark", "gpt-5.5"];
-const activeSubscriptionIds = [
+const reviewedSubscriptionIds = [
   "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
   "gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol",
 ];
+// Pi1.5 adds Terra; retain its release-owned limits, not the opt-in 1M policy.
+const catalogOnlyLimits = {openai: {"gpt-6.1-terra": 272000}, "openai-codex": {"gpt-6.1-terra": 500000}};
+const activeSubscriptionIds = [...reviewedSubscriptionIds, ...Object.keys(catalogOnlyLimits["openai-codex"])].sort();
 const expectedReviewedModels = {
-  openai: [...retiredSubscriptionIds, ...activeSubscriptionIds],
-  "openai-codex": activeSubscriptionIds,
+  openai: [...retiredSubscriptionIds, ...reviewedSubscriptionIds],
+  "openai-codex": reviewedSubscriptionIds,
 };
+const childModels = Object.fromEntries(providers.map(provider => [provider, [...expectedReviewedModels[provider], ...Object.keys(catalogOnlyLimits[provider])]]));
 const expectedCounts = { openai: 9, "openai-codex": 7 };
-const expectedChildren = 16;
-assert.deepEqual(Object.keys(limits).sort(), [...retiredSubscriptionIds, ...activeSubscriptionIds].sort());
+const expectedChildren = 18;
+assert.deepEqual(Object.keys(limits).sort(), [...retiredSubscriptionIds, ...reviewedSubscriptionIds].sort());
 const agentDir = join(process.env.HOME, ".pi/agent");
 let networkCalls = 0;
 globalThis.fetch = () => { networkCalls++; throw new Error("provider/network calls forbidden"); };
 const checkModel = (model) => {
-  assert.equal(model.contextWindow, limits[model.id], `${model.provider}/${model.id}`);
+  assert.equal(model.contextWindow, limits[model.id] ?? catalogOnlyLimits[model.provider][model.id], `${model.provider}/${model.id}`);
 };
 
 if (child) {
@@ -41,7 +45,7 @@ if (child) {
   let started = 0;
   let stopped = 0;
   try {
-    for (const provider of providers) for (const id of expectedReviewedModels[provider]) {
+    for (const provider of providers) for (const id of childModels[provider]) {
       const session = await factory.create({
         cwd: process.cwd(), storage: { kind: "memory" }, model: `${provider}/${id}`,
         ambientExtensions: false, extensionPaths: [], noSkills: true, noContextFiles: true,
@@ -80,6 +84,7 @@ if (child) {
     assert.deepEqual(reviewedIds, [...expectedReviewedModels[provider]].sort(), provider);
     assert.equal(reviewedIds.length, expectedCounts[provider], provider);
     assert(baseline.getModel(provider, "gpt-6.1-sol"), `${provider}: selected default must remain available`);
+    for (const [id, contextWindow] of Object.entries(catalogOnlyLimits[provider])) assert.equal(baseline.getModel(provider, id).contextWindow, contextWindow, `${provider}/${id}: pinned catalog limit`);
   }
   for (const id of retiredSubscriptionIds) assert.equal(baseline.getModel("openai-codex", id), undefined);
   assert.equal(limits["gpt-5.3-codex-spark"], 128000, "retired Spark must not be inflated");
@@ -113,6 +118,11 @@ if (child) {
     assert.equal(resolved.reserveTokens, limit > 272000 ? 150000 : 32000);
     assert.equal(limit - resolved.reserveTokens, limit > 272000 ? 900000 : 96000);
   }
+  for (const provider of providers) for (const [id, contextWindow] of Object.entries(catalogOnlyLimits[provider])) {
+    const model = runtime.getModel(provider, id); checkModel(model);
+    assert.equal(model.contextWindow, contextWindow, 'new catalog models must not inherit unreviewed context overrides');
+    assert.equal(settings.getCompactionSettings(model).reserveTokens, 32000, 'new catalog models retain ordinary compaction');
+  }
   const model = runtime.getModel("openai", "gpt-6.1-sol");
   const loader = new pi.DefaultResourceLoader({ cwd: process.cwd(), agentDir, settingsManager: settings, noExtensions: true, noSkills: true, noContextFiles: true, noPromptTemplates: true, noThemes: true });
   await loader.reload();
@@ -134,5 +144,5 @@ if (child) {
   assert.equal(result.stderr, "");
   process.stdout.write(result.stdout);
   assert.equal(networkCalls, 0);
-  console.log(`PASS exact ${catalogIds.length} active subscription IDs; 9 API + 7 subscription reviewed pairs, 2 absent subscription IDs not revived; per-model compaction, native SDK and unchanged unrelated metadata; no live entitlement claim`);
+  console.log(`PASS exact ${catalogIds.length} active subscription IDs; 9 API + 7 subscription reviewed pairs, 2 catalog-only Terra pairs unchanged, 2 absent subscription IDs not revived; per-model compaction, native SDK and unchanged unrelated metadata; no live entitlement claim`);
 }
