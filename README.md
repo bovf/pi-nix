@@ -68,10 +68,9 @@ to that compilation, without a second core recipe or registry substitute.
 Pi 1.2 removed experimental server/client/protocol workspaces. With approval,
 their packing and Unix-handshake contract are retired; supported native SDK,
 child/preload/host-peer controls and actual bundled CLI RPC remain required.
-Subagents 0.84.0 uses native SDK sessions, not the retired Unix transport.
+Subagents 0.85.0 uses native SDK sessions, not the retired Unix transport.
 Pi1.3 fixed the stale install probe upstream, so its local substitution stays retired.
-The bridge packs both compiled Durable/Chord artifacts; native install, SDK and
-actual footer gates remain. [Current update and limits](docs/update-2026-11-05.md).
+Native install, SDK and actual footer gates remain mandatory. [Current update and limits](docs/update-2026-11-05.md).
 
 The coding-agent root is `lib/pi/node_modules/@earendil-works/pi-coding-agent`;
 its shared peers are hoisted in `lib/pi/node_modules`. Native `remote-pi` links
@@ -263,7 +262,10 @@ axe-core, the newer local MCP packages and a REA-scoped compatible Ghidra pin.
 **461** unique dependency tuples and parent constraints were audited. See
 [versions, schema bridge, native compatibility and bounded checks](docs/update-2026-11-05.md).
 This candidate stays on a private feature branch until operator rebuild/testing
-and separate main/mirror approval. Historical receipts below are not current acceptance.
+and separate main/mirror approval. The complete Craft update adds a narrow
+[Craft native-runtime compatibility fixes](docs/craft-update-2026-11-05.md),
+not new Pi/extension/model versions or broader runtime permissions.
+Historical receipts below are not current acceptance.
 
 ### Historical update (2026-10-29)
 

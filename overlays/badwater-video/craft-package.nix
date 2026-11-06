@@ -5,12 +5,15 @@
   makeWrapper,
   ffmpeg,
   bubblewrap,
+  util-linux,
   bash,
   writeText,
 }: let
   defaults = writeText "badwater-craft-mcp-defaults.json" (builtins.toJSON {
     bubblewrap = lib.getExe bubblewrap;
     bash = lib.getExe bash;
+    mount = "${util-linux}/bin/mount";
+    setpriv = "${util-linux}/bin/setpriv";
     toolPath = lib.makeBinPath [ffmpeg bash];
   });
 in
@@ -33,6 +36,7 @@ in
     doInstallCheck = true;
     installCheckPhase = ''
       PYTHONPYCACHEPREFIX="$TMPDIR/bytecode" ${python3}/bin/python3 -m compileall -q "$out/lib/badwater-craft-mcp"
+      PYTHONPATH="$out/lib/badwater-craft-mcp" PYTHONDONTWRITEBYTECODE=1 ${python3}/bin/python3 ${./test_craft_mcp.py} ${defaults}
     '';
     meta = {
       description = "Private filesystem/network launcher for verified native Craft stdio MCP";

@@ -91,6 +91,7 @@ in
       "$out/bin/badwater-video" --help >/dev/null
       PYTHONPATH="$out/lib/badwater-video" ${python}/bin/python3 ${../../tests/video-unit.py}
       PYTHONPATH="$out/lib/badwater-video" ${python}/bin/python3 ${../../tests/editorial-unit.py}
+      PYTHONPATH="$out/lib/badwater-video" ${python}/bin/python3 ${../../tests/video-mcp-errors.py}
       runHook postInstallCheck
     '';
     passthru = {inherit model modelCard defaults whisper python models;};
