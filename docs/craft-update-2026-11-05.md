@@ -1,8 +1,10 @@
 # Craft runtime compatibility — 2026-11-05
 
-Private candidate: `chore/update-craft-stack-2026-11-05`. This keeps Pi 1.5.0,
-all parent/npm pins, model/context preferences and existing runtime permissions.
-No main/mirror publication or activation is included.
+Originally tested on `chore/update-craft-stack-2026-11-05`, now promoted with the
+operator's approval to canonical `main` and its source-only GitHub/Codeberg mirrors.
+This keeps Pi 1.5.0, all parent/npm pins, model/context preferences and existing
+runtime permissions. Public consumers use `github:bovf/pi-nix`; no activation
+or permission to resume old workflows accompanies source publication.
 
 Updated LightCraft 0.18.1 extends its normal library-load report with `repaired: []`.
 The private Craft MCP launcher previously rejected that new field as an unknown
